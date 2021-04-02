@@ -13,6 +13,8 @@ from bcipy.acquisition.datastream.tcp_server import TcpDataServer, await_start
 from bcipy.acquisition.devices import DeviceSpec, supported_device
 from bcipy.acquisition.util import StoppableThread
 
+CHANNEL_RENAME_RULES = {str(i) : f'ch{i}' for i in range(1, 16)}
+CHANNEL_RENAME_RULES[""] = "ch_blank"
 
 def init_eeg_acquisition(parameters: dict,
                          save_folder: str,
@@ -66,8 +68,10 @@ def init_eeg_acquisition(parameters: dict,
     # TODO: only use these connection_params if this is ConnectionMethod.TCP
     # Refactor to extract only the needed connection params from parameters.
     connection_params = {'host': host, 'port': port}
-    connector = registry.make_connector(device_spec, connection_method,
-                                        connection_params)
+    connector = registry.make_connector(device_spec,
+                                        connection_method,
+                                        connection_params,
+                                        rename_rules=CHANNEL_RENAME_RULES)
 
     client = DataAcquisitionClient(connector=connector,
                                    buffer_name=buffer_name,

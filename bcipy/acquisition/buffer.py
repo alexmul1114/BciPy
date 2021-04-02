@@ -58,9 +58,6 @@ class Buffer():
         self._conn = sqlite3.connect(archive_name, check_same_thread=False)
         cursor = self._conn.cursor()
 
-        channels = ['ch' + channel for channel in channels]
-
-        print(channels)
         # Create a data table with the correct number of channels (+ timestamp)
         fields = ['timestamp'] + channels
         self.fields = fields

@@ -37,7 +37,8 @@ def find_connector(device_spec: DeviceSpec, connection_method: ConnectionMethod
 
 def make_connector(device_spec: DeviceSpec,
                    connection_method: ConnectionMethod,
-                   connection_params: dict) -> Connector:
+                   connection_params: dict,
+                   rename_rules=None) -> Connector:
     """Find and construct a Connector for the given device and connection method.
 
     Parameters
@@ -48,11 +49,12 @@ def make_connector(device_spec: DeviceSpec,
           as host and port information (for a TCP connector).
     Returns
     -------
-        Connector instanct
+        Connector instance
     """
     connector = find_connector(device_spec, connection_method)
     return connector(connection_params=connection_params,
-                     device_spec=device_spec)
+                     device_spec=device_spec,
+                     rename_rules=rename_rules)
 
 
 def find_protocol(device_spec: DeviceSpec,
