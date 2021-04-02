@@ -19,6 +19,15 @@
         "excluded_from_analysis": ["TRG"]
     },
     {
+        "name": "V-Amp",
+        "content_type": "EEG",
+        "channels": [ "Ch1", "Ch2", "Ch3", "Ch4", "Ch5", "Ch6",  "Ch7", "Ch8",
+            "Ch9", "Ch10", "Ch11", "Ch12", "Ch13", "Ch14", "Ch15", "Ch16" ],
+        "sample_rate": 500.0,
+        "connection_methods": ["LSL"],
+        "description": "Brain Products V-Amp"
+    },
+    {
         "name": "g.USBamp-1",
         "content_type": "EEG",
         "channels": [ "Ch1", "Ch2", "Ch3", "Ch4", "Ch5", "Ch6",  "Ch7", "Ch8",
