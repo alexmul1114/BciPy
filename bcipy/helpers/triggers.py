@@ -280,7 +280,7 @@ def write_triggers_from_inquiry_icon_to_icon(inquiry_timing: List[Tuple],
                            "\n")
 
 
-def trigger_decoder(mode: str, trigger_path: str = None) -> tuple:
+def trigger_decoder(mode: str, trigger_path: str = None, triggers=['target', 'nontarget']) -> tuple:
     """Trigger Decoder.
 
     Given a mode of operation (calibration, copy phrase, etc) and
@@ -310,7 +310,7 @@ def trigger_decoder(mode: str, trigger_path: str = None) -> tuple:
     # extract stimuli from the text
     stimuli_triggers = [
         line for line in trigger_txt
-        if line[1] == 'target' or line[1] == 'nontarget'
+        if line[1] in triggers
     ]
 
     # from the stimuli array, pull our the symbol information

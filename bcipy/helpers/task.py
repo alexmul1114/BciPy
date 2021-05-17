@@ -485,7 +485,7 @@ def trial_reshaper(trial_target_info: list,
 
     except Exception as e:
         raise Exception(
-            f'Could not reshape trial for mode: {mode}, {fs}, {k}. Error: {e}')
+            f'Could not reshape trial for mode: {mode}, fs=[{fs}], k=[{k}], trial_length=[{trial_length}] Error: {e}')
 
 
 def pause_calibration(window, display, current_index: int, parameters: dict):
