@@ -10,6 +10,7 @@ NTS - Exports done, looking to see if I can create my own averages by changing t
 """
 import csv
 import numpy as np
+import pandas as pd
 
 from bcipy.helpers.load import read_data_csv, load_json_parameters
 from bcipy.signal.process.filter import bandpass, notch, downsample
@@ -21,20 +22,26 @@ from bcipy.signal.process.decomposition.psd import (
     power_spectral_density, PSD_TYPE)
 
 # defaults and constants
-DOWNSAMPLE_RATE = 2
+DOWNSAMPLE_RATE = 1
 NOTCH_FREQ = 60
-FILTER_HP = 2
-FILTER_LP = 90  # 50 alpha 90 gamma
+FILTER_HP = 1
+FILTER_LP = 80  # 50 alpha 80 gamma
 FILTER_ORDER = 8
+TRIPOLAR_CHANNELS = [0, 2, 4, 6]
 TRIGGERS_OF_INTEREST = ['first_pres_target']
-# TRIGGERS_OF_INTEREST = ['target', 'nontarget']
+# TRIGGERS_OF_INTEREST = ['nontarget']
 
-# pre-stim / post-stim gamma. target / nontarget. Each individual.
+FREQ_RANGE = [50, 70]
 
-FREQ_RANGE = [50, 80]
-# CHANNEL_EXPORT = 0
-CSV_EXPORT_NAME = 'tripolar_analysis_gamma_eyes_first_half_1sec_500ms_intervals_pre_post_first_pres.csv'
-META_OUTPUT_NAME = 'tripolar_analysis_gamma_first_half_average_eyes_first_pres.txt'
+SUBJECT = 'jk'
+BAND = 'upper_gamma'
+TASK = 'eyes'
+FREQ_INTERVAL = '50_70'
+TRIGGERS_USED = 'first_pres_target'
+CONDITION = 'first_half'
+
+CSV_EXPORT_NAME = f'tripolar_analysis_{BAND}_{FREQ_INTERVAL}_{TASK}_{TRIGGERS_USED}_{CONDITION}_{SUBJECT}.csv'
+META_OUTPUT_NAME = f'tripolar_analysis_{BAND}_{FREQ_INTERVAL}_{TASK}_average_{TRIGGERS_USED}_{CONDITION}_{SUBJECT}.txt'
 # EXPORT_CHANNELS = [0]
 
 def calculate_fft(data, fs, trial_length, relative=False, plot=False):
@@ -52,7 +59,7 @@ def calculate_fft(data, fs, trial_length, relative=False, plot=False):
                 relative=relative)
 
 
-def get_experiment_data(raw_data_path, parameters_path, apply_filters=False):
+def get_experiment_data(raw_data_path, parameters_path, apply_filters=False, scale=False, scale_factor=5, scale_channels=[1, 3, 5, 7]):
     """Get Experimental Data.
 
     Given the path to raw data and parameters, parse them into formats we can
@@ -68,7 +75,23 @@ def get_experiment_data(raw_data_path, parameters_path, apply_filters=False):
         # filter the data as desired here!
         raw_data, fs = filter_data(
             raw_data, fs, DOWNSAMPLE_RATE, NOTCH_FREQ)
+
+    if scale:
+        raw_data = scale_data(raw_data, scale_factor, scale_channels)
     return raw_data, channels, type_amp, fs, parameters
+
+
+def scale_data(raw_data, scale_factor, scale_channels):
+    """Scale Data.
+    
+    Using the scale channels defined, scale the raw_data channels corresponding to that index by the scale_factor.
+    """
+    def func(x):
+        for index in scale_channels:
+            x[index] = x[index] / scale_factor
+
+    np.apply_along_axis(func, 0, raw_data)
+    return raw_data
 
 
 def get_triggers(trigger_path, poststim, prestim=False):
@@ -88,7 +111,7 @@ def get_triggers(trigger_path, poststim, prestim=False):
         trial_length = poststim
 
     
-    # Remove the last stimuli if more buffer is needed post stim
+    # # Remove the last stimuli if more buffer is needed post stim
     # trigger_timing.pop()
     # trigger_targetness.pop()
 
@@ -157,7 +180,7 @@ def parse(
     # add a static offset of the system.
     # This is calculated on a per machine basis.
     # Reach out if you have questions.
-    offset = offset + parameters['static_trigger_offset']
+    offset = offset + .067 # fuck
 
     # reshape the data! *Note* to change the channels you'd like returned
     # from the reshaping, create a custom channel map and pass it into
@@ -168,7 +191,7 @@ def parse(
         targetness,
         triggers,
         data,
-        mode='free_spell', # first_pres needs this to be free_spell. All others can use calibration
+        mode='free_spell', # first_pres_target needs this to be free_spell. All others can use calibration
         fs=fs,
         k=1,
         offset=offset,
@@ -178,13 +201,13 @@ def parse(
     return trials, labels
 
 
-def export_data_to_csv(exports, intervals, targetness, channels):
+def export_data_to_csv(path, exports, intervals, targetness, channels):
     """Export Data to CSV.
     
     Given an array of exports and column names, write a csv for processing in other systems
     """
     interval_len = len(intervals)
-    with open(CSV_EXPORT_NAME, 'w') as tripolar_export:
+    with open(f'{path}/{CSV_EXPORT_NAME}', 'w') as tripolar_export:
         writer = csv.writer(
             tripolar_export,
             delimiter=',',
@@ -219,22 +242,36 @@ def export_data_to_csv(exports, intervals, targetness, channels):
             i += 1
     return data
 
-def meta_calculation(data):
+def meta_calculation(path, data):
     """Meta Calculation.
     
-    Calculate the average of all fields, all channels and print
+    Calculate the average of all channels and save as text
     """
-    # prestim_intervals = len(intervals) / 2
-    # half = len(exports[0])
     reporting = []
 
     array = np.array(data)
     col_average = np.mean(array, axis=0)
 
-    np.savetxt(META_OUTPUT_NAME, col_average)
-    # import pdb; pdb.set_trace()
+    prestim_intervals = 1
+    post_stim_intervals = 4
+    y = 0 # keep track of column
+    while len(col_average) > y:
+        baseline_average = col_average[y]
 
-    return reporting
+        y += prestim_intervals
+        for _ in range(post_stim_intervals):
+            
+            # baseline correct using the prestim average
+            reporting.append(col_average[y] - baseline_average)
+            y += 1
+
+    np.savetxt(f'{path}/{META_OUTPUT_NAME}', col_average)
+
+    with open(f'{path}/baseline_corrected_{META_OUTPUT_NAME}', 'w') as output:
+        for item in reporting:
+            output.write('%s\n' % item)
+
+    return reporting, col_average
 
 
 def determine_export_bins(data_export_range, interval):
@@ -256,7 +293,7 @@ def determine_export_bins(data_export_range, interval):
     return intervals
 
 
-def generate_interval_trials(trials, interval, intervals, fs, trial_length, channel):
+def generate_interval_trials(trials, interval, intervals, fs, channel):
     """Generate Interval Trials.
     
     Using the trialed data from the trial reshaper, break the data into interval for export
@@ -294,9 +331,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--path', required=True)
-    parser.add_argument('-pre', '--prestim', default=1, type=int)
+    parser.add_argument('-pre', '--prestim', default=.25, type=int)
     parser.add_argument('-post', '--poststim', default=1, type=int)
-    parser.add_argument('-int', '--interval', default=.5, type=int)
+    parser.add_argument('-int', '--interval', default=.25, type=int)
     args = parser.parse_args()
 
     # extract relevant args
@@ -306,8 +343,6 @@ if __name__ == '__main__':
     interval = args.interval
 
     intervals = determine_export_bins([-prestim, poststim], interval)
-
-    print(intervals)
 
     raw_data_path = '{}/raw_data.csv'.format(data_folder)
     parameter_path = '{}/parameters.json'.format(data_folder)
@@ -320,7 +355,8 @@ if __name__ == '__main__':
     # get the experiment data needed for processing.
     # *Note* Constants for filters at top of file. Set apply_filters to true to use the filters.
     data, channels, type_amp, fs, parameters = get_experiment_data(
-        raw_data_path, parameter_path, apply_filters=True)
+        raw_data_path, parameter_path, apply_filters=True,
+        scale=True, scale_factor=5, scale_channels=TRIPOLAR_CHANNELS) # Here we scale the tripolar channels because the gain is higher on them
 
     logging.info('Reading trigger data \n')
     # give it path and poststimulus length (required). Last, prestimulus length (optional)
@@ -344,12 +380,14 @@ if __name__ == '__main__':
     exports = []
     for channel in range(len(channels)):
         exports.append(
-            generate_interval_trials(trials, interval, intervals, fs, trial_length, channel=channel)
+            generate_interval_trials(trials, interval, intervals, fs, channel=channel)
         )
 
     # Do your analyses or uncomment next line to use debugger here and see what is returned.
     # Exports is an array of channel name and export information
-    data = export_data_to_csv(exports, intervals, targetness, channels)
-    meta_calculation(data)
-    # # calculate_fft(trials[0][1], fs, trial_length, plot=True)
-    # logging.info('Complete! \n')
+    data = export_data_to_csv(data_folder, exports, intervals, targetness, channels)
+    # WE ARE AT THE POINT OF ME BASELINE CORRECTING THE AVERAGES TO USE FOR PLOTTING AND EXPLORATION
+    reporting, col_average = meta_calculation(data_folder, data) # Uncomment to save average of columns
+
+    # calculate_fft(trials[0][1], fs, trial_length, plot=True)
+    logging.info('Complete! \n')
