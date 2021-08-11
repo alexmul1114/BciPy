@@ -168,8 +168,14 @@ class LslConnector(Connector):
         self.log_info(metadata)
 
         channels = channel_names(metadata)
+        # print(metadata)
+
+        print(metadata.as_xml())
+        print(f"device channels: {channels}")
+        print(self.device_spec.channels)
         # Confirm that provided channels match metadata, or meta is empty.
         if channels and self.device_spec.channels != channels:
+            print(metadata.as_xml())
             print(f"device channels: {channels}")
             print(self.device_spec.channels)
             raise Exception("Channels read from the device do not match "

@@ -13,7 +13,7 @@ from bcipy.acquisition.datastream.tcp_server import TcpDataServer, await_start
 from bcipy.acquisition.devices import DeviceSpec, supported_device
 from bcipy.acquisition.util import StoppableThread
 
-CHANNEL_RENAME_RULES = {str(i) : f'ch{i}' for i in range(1, 16)}
+CHANNEL_RENAME_RULES = {str(i) : f'ch{i}' for i in range(1, 9)}
 CHANNEL_RENAME_RULES[""] = "ch_blank"
 
 def init_eeg_acquisition(parameters: dict,
