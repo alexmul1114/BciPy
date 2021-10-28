@@ -81,6 +81,7 @@ class TestPcaRdaKdeModelInternals(ModelSetup):
         x_reduced_2 = pca.fit_transform(self.x, var_tol=var_tol)
         self.assertTrue(np.allclose(x_reduced, x_reduced_2))
 
+        breakpoint()
         # Output values should be correct
         expected = np.load(expected_output_folder / "test_pca.expected.npy")
         self.assertTrue(np.allclose(x_reduced, expected))
@@ -209,7 +210,7 @@ class TestPcaRdaKdeModelExternals(ModelSetup):
         x_test_neg = self.neg_mean + self.neg_std * np.random.randn(self.num_channel, num_x_n, self.dim_x)
         x_test = np.concatenate((x_test_pos, x_test_neg), 1)  # Target letter is first
 
-        letters = alp[10: 10 + num_x_p + num_x_n]  # Target letter is K
+        letters = alp[10 : 10 + num_x_p + num_x_n]  # Target letter is K
 
         lik_r = self.model.predict(data=x_test, inquiry=letters, symbol_set=alp)
         fig, ax = plt.subplots()

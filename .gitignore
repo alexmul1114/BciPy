@@ -26,3 +26,6 @@ build/
 dist/
 
 bcipy/parameters/parameters_*
+bcipy/signal/model/neural_net/*
+results/*
+results.zip

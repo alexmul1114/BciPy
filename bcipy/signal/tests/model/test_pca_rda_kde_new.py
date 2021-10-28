@@ -6,14 +6,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from scipy.stats import norm
-
 from bcipy.helpers.task import alphabet
-from bcipy.signal.model import ModelEvaluationReport, PcaRdaKdeModel
-from bcipy.signal.model.pca_rda_kde_new import RDA
-from bcipy.signal.model.pca_rda_kde_new import KDE
-from bcipy.signal.model.pca_rda_kde_new import ChannelwisePCA
 from bcipy.signal.exceptions import SignalException
+from bcipy.signal.model import ModelEvaluationReport
+from bcipy.signal.model.pca_rda_kde_new import KDE, RDA, ChannelwisePCA, PcaRdaKdeModel
+from scipy.stats import norm
 from sklearn.pipeline import make_pipeline
 
 expected_output_folder = Path(__file__).absolute().parent / "unit_test_expected_output"
@@ -33,16 +30,16 @@ class ModelSetup(unittest.TestCase):
         # Generate Gaussian random data
         cls.pos_mean, cls.pos_std = 0, 0.5
         cls.neg_mean, cls.neg_std = 1, 0.5
-        x_pos = cls.pos_mean + cls.pos_std * np.random.randn(cls.num_channel, cls.num_x_pos, cls.dim_x)
-        x_neg = cls.neg_mean + cls.neg_std * np.random.randn(cls.num_channel, cls.num_x_neg, cls.dim_x)
+        x_pos = cls.pos_mean + cls.pos_std * np.random.randn(cls.num_x_pos, cls.num_channel, cls.dim_x)
+        x_neg = cls.neg_mean + cls.neg_std * np.random.randn(cls.num_x_neg, cls.num_channel, cls.dim_x)
         y_pos = np.ones(cls.num_x_pos)
         y_neg = np.zeros(cls.num_x_neg)
 
         # Stack and permute data
-        x = np.concatenate([x_pos, x_neg], 1)
-        y = np.concatenate([y_pos, y_neg], 0)
+        x = np.concatenate([x_pos, x_neg])
+        y = np.concatenate([y_pos, y_neg])
         permutation = np.random.permutation(cls.num_x_pos + cls.num_x_neg)
-        x = x[:, permutation, :]
+        x = x[permutation, ...]
         y = y[permutation]
 
         cls.x = x
@@ -53,6 +50,25 @@ class ModelSetup(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.tmp_dir)
+
+
+class TestPCA(ModelSetup):
+    def test_pca(self):
+        var_tol = 0.95
+        pca = ChannelwisePCA(num_channel=self.num_channel, var_tol=var_tol)
+        pca.fit(self.x, self.y)
+        x_reduced = pca.transform(self.x)
+        x_reduced_2 = pca.fit_transform(self.x, self.y)
+        self.assertTrue(np.allclose(x_reduced, x_reduced_2))
+
+        # Test that the variance is correct
+        self.assertTrue(np.all([chan.sum() >= var_tol for chan in pca._get_explained_variance_ratios()]))
+
+
+class TestRDA(ModelSetup):
+    def test_rda(self):
+        rda = RDA(lam=0.9, gam=0.1)
+        rda.fit(self.x, self.y)
 
 
 class TestPcaRdaKdeModelInternals(ModelSetup):
@@ -69,20 +85,6 @@ class TestPcaRdaKdeModelInternals(ModelSetup):
         self.model = PcaRdaKdeModel(k_folds=10)
         self.model.fit(self.x, self.y)
         np.random.seed(0)
-
-    def test_pca(self):
-        var_tol = 0.95
-
-        # .fit() then .transform() should match .fit_transform()
-        pca = ChannelwisePCA(num_channel=self.num_channel)
-        pca.fit(self.x, var_tol=var_tol)
-        x_reduced = pca.transform(self.x)
-        x_reduced_2 = pca.fit_transform(self.x, var_tol=var_tol)
-        self.assertTrue(np.allclose(x_reduced, x_reduced_2))
-
-        # Output values should be correct
-        expected = np.load(expected_output_folder / "test_pca.expected.npy")
-        self.assertTrue(np.allclose(x_reduced, expected))
 
     @pytest.mark.slow
     @pytest.mark.mpl_image_compare(

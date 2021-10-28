@@ -64,6 +64,7 @@ class ChannelWisePrincipalComponentAnalysis:
             self.list_pca[i].fit(x[i, :, :], y)
             max_sv = self.list_pca[i].singular_values_[0]
             self.list_pca[i].n_components = np.sum(self.list_pca[i].singular_values_ >= max_sv * self.var_tol)
+            breakpoint()
             try:
                 self.list_pca[i].fit(x[i, :, :], y)
             except Exception as e:
