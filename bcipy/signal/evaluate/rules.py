@@ -1,5 +1,9 @@
 import numpy as np
+from typing import List
 from abc import ABC, abstractmethod
+
+from bcipy.signal.process.decomposition import psd
+from scipy.signal import find_peaks
 
 
 class Rule(ABC):
@@ -11,12 +15,9 @@ class Rule(ABC):
     the evaluator to use when evaluating data. Returns True upon
     rule breakage, otherwise defaults to False."""
 
-    def __init__(self, threshold):
-        self.threshold = threshold
-
     # a method required for all subclasses
     @abstractmethod
-    def is_broken(self, data):
+    def is_broken(self, data) -> bool:
         ...
 
 
@@ -30,7 +31,10 @@ class HighVoltage(Rule):
     parameters.json
     """
 
-    def is_broken(self, data):
+    def __init__(self, threshold):
+        self.threshold = threshold
+
+    def is_broken(self, data) -> bool:
         """Is Broken.
 
             Test data against threshold value. Return broken
@@ -59,20 +63,19 @@ class LowVoltage(Rule):
     Set low threshold for permitted voltage.
     """
 
-    def is_broken(self, data):
+    def __init__(self, threshold: float):
+        self.threshold = threshold
+
+    def is_broken(self, data) -> bool:
         """Is Broken.
 
-            Test data against threshold value. Return false
-            if threshold exceeded.
+        Test data against threshold value. Return false if threshold exceeded.
 
+        data(ndarray[float]): C x N length array where C is the number of channels and N is the number of samples
+        """
 
-            data(ndarray[float]): C x N length array where
-            C is the number of channels and N is the number of samples
-
-
-                np.amin takes the minimum value in an array even of length 1:
-                  (https://docs.scipy.org/doc/numpy/reference/generated/numpy.amin.html)
-         """
+        # Note: np.amin takes the minimum value in an array even of length 1:
+        # (https://docs.scipy.org/doc/numpy/reference/generated/numpy.amin.html)
         if np.amin(data) <= self.threshold:
             return True
 
@@ -80,3 +83,54 @@ class LowVoltage(Rule):
 
     def __str__(self):
         return f'Low Voltage with threshold {self.threshold}'
+
+
+class HighFrequency(Rule):
+
+    def __init__(self, threshold: float, range: List[int], relative=False):
+        self.threshold = threshold
+        self.range = range
+        self.relative = relative
+
+    def __str__(self):
+        return f'High Frequency with threshold {self.threshold}'
+
+    def is_broken(self, data, fs) -> bool:
+        """Is Broken.
+
+        Test data against threshold value. Return false if threshold exceeded.
+
+        data(ndarray[float]): C x N length array where C is the number of channels and N is the number of samples
+        """
+
+        # Note: np.amin takes the minimum value in an array even of length 1:
+        # (https://docs.scipy.org/doc/numpy/reference/generated/numpy.amin.html)
+        window_length = len(data[0][0]) / fs
+        if psd(data, self.range, fs, window_length) >= self.threshold:
+            return True
+
+        return False
+
+class Blink(Rule):
+
+    def __init__(self, threshold: float, peak_distance: float):
+        self.threshold = threshold
+        self.peak_distance = peak_distance
+
+    def __str__(self):
+        return f'Blink count with max threshold {self.threshold} and min peak distance {self.peak_distance}'
+
+    def is_broken(self, data) -> bool:
+        """Is Broken.
+
+        Test data against threshold value. Return false if threshold exceeded.
+
+        data(ndarray[float]): C x N length array where C is the number of channels and N is the number of samples
+        """
+
+        # Note: np.amin takes the minimum value in an array even of length 1:
+        # (https://docs.scipy.org/doc/numpy/reference/generated/numpy.amin.html)
+        if find_peaks(data, threshold=self.threshold, distance=self.peak_distance):
+            return True
+
+        return False

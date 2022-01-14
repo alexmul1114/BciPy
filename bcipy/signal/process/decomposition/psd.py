@@ -10,7 +10,7 @@ from typing import Tuple
 
 
 class PSD_TYPE(Enum):
-    """Power Spectal Density Type.
+    """Power Spectral Density Type.
 
     Enum used to specify the type of power spectral approximation
         to use. They each have trade-offs in terms of computational

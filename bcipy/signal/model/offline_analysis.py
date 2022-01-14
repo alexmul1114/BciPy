@@ -1,4 +1,7 @@
 import logging
+import mne
+from mne import Annotations, Epochs
+from mne.io import RawArray
 from pathlib import Path
 from typing import Tuple
 from bcipy.helpers.acquisition import analysis_channel_names_by_pos, analysis_channels
@@ -94,6 +97,9 @@ def offline_analysis(data_folder: str = None,
     # Channel map can be checked from raw_data.csv file.
     # The timestamp column is already excluded.
     channel_map = analysis_channels(channels, type_amp)
+    # channels_to_remove = [idx for idx, value in enumerate(channel_map) if value == 0]
+    # data = np.delete(data, channels_to_remove, axis=0)
+    # mne_pipeline(data, channels, fs, t_t_i, t_i, trial_length)
 
     model = PcaRdaKdeModel(k_folds=k_folds)
     data, labels = model.reshaper(
@@ -111,9 +117,10 @@ def offline_analysis(data_folder: str = None,
 
     log.info(f'Training complete [AUC={model_performance.auc:0.4f}]. Saving data...')
 
+
     model.save(data_folder + f'/model_{model_performance.auc:0.4f}.pkl')
 
-    figure_handles = visualize_erp(
+    visualize_erp(
         data,
         labels,
         fs,
@@ -127,9 +134,130 @@ def offline_analysis(data_folder: str = None,
         offline_analysis_tone = parameters.get('offline_analysis_tone')
         play_sound(offline_analysis_tone)
 
-    return model, figure_handles
+    import pdb; pdb.set_trace()
+    return
 
 
+# def _remove_bad_data_by_trial(trial_data, trial_labels, parameters,estimate):
+
+#     """ Removes bad data in a trial-by-trial fashion. Offline artifact rejection.
+#         Args:
+#         trial_data: a multidimensional array of Channels x Trials (chopped into 500ms chunks) x Voltages 
+#         trial_labels: an ndarray of 0s (non-targets) and 1s (target), each representing a trial
+#         parameter(dict): parameters to pull information for enabled rules and threshold values
+
+#      """
+#     # get enabled rules
+#     high_voltage_enabled = parameters['high_voltage_threshold']
+#     low_voltage_enabled = parameters['low_voltage_threshold']
+#     rejection_threshold = parameters['rejection_threshold']
+
+#     # invoke evaluator / rules
+#     evaluator = Evaluator(parameters, high_voltage_enabled, low_voltage_enabled)
+
+#     # iterate over trial data, evaluate the trials, remove if needed and modify the trial labels to reflect
+#     channel_number = trial_data.shape[0]
+#     trial_number = trial_data[0].shape[0]
+#     num_trials = trial_data[0].shape[0]
+
+#     trial = 0
+#     rejected_trials = 0
+#     rejection_suggestions = 0
+#     bad_channel_threshold = 1
+
+#     while trial < trial_number:
+#         # go channel-wise through trials
+#         for ch in range(channel_number):
+#             data = trial_data[ch][trial]
+#             # evaluate voltage samples from this trial
+#             response = evaluator.evaluate(data) 
+#             if not response: # if False
+#                 rejection_suggestions += 1 
+#                 if rejection_suggestions >= bad_channel_threshold:
+#                     # if the evaluator rejects the data and we've reached
+#                     # the threshold, then delete the trial from each channel,
+#                     # adjust trial labels to follow suit, then exit the loop
+#                     trial_data = np.delete(trial_data, trial, axis=1)
+#                     trial_labels = np.delete(trial_labels, trial)
+#                     trial_number -= 1
+#                     rejected_trials += 1
+#                     break
+#         rejection_suggestions = 0 
+#         trial += 1
+
+#     percent_rejected = (rejected_trials / num_trials) * 100
+
+#     print('Number Rejected Trial-based: ' + str(rejected_trials))
+
+#     if percent_rejected > rejection_threshold:
+
+#         raise Exception(f'Percentage of data removed too high [{percent_rejected}]')
+
+#     else:
+#         return trial_data, trial_labels, percent_rejected
+
+# def _remove_bad_data_by_sequence(trial_data, trial_labels, parameters, trials_per_sequence,estimate):
+#     """Remove Bad Data By Sequence.
+# ​
+#     Removes bad data in a sequence-by-sequence fashion. Offline artifact rejection.
+#         Args:
+#         trial_data: a multidimensional array of Channels x Trials (chopped into 500ms chunks) x Voltages
+#         trial_labels: an ndarray of 0s (non-targets) and 1s (target), each representing a trial
+#         parameter(dict): parameters to pull information for enabled rules and threshold values
+
+#     """
+
+#     # get enabled rules
+#     high_voltage_enabled = parameters['high_voltage_threshold']
+#     low_voltage_enabled = parameters['low_voltage_threshold']
+#     rejection_threshold = parameters['rejection_threshold']
+
+#     # invoke evaluator / rules
+#     evaluator = Evaluator(parameters, high_voltage_enabled, low_voltage_enabled)
+
+#     # iterate over trial data, evaluate the sequences, remove if needed and modify the trial labels to reflect
+#     channel_number = trial_data.shape[0]
+
+#     # looping criteria changes by number of trials in a sequence rather than 1
+#     # which is used in _remove_bad_data_by_trial
+#     trial_number = trial_data[0].shape[0]
+#     num_trials = trial_data[0].shape[0]
+
+#     trial = 0
+#     rejected_trials = 0
+
+#     while trial < trial_number:
+#         # go channel-wise through trials
+#         for ch in range(channel_number):
+#             sequence_end = trial + trials_per_sequence
+#             data = trial_data[ch][trial:sequence_end]
+#             # evaluate voltage samples from this sequence
+#             # by iterating through trials within the sequence
+#             response = evaluator.evaluate(data)
+#             if not response:
+#                 # if the evaluator rejects the data and we've reached
+#                 # the threshold, then delete the entire sequence from each channel,
+#                 # adjust trial labels to follow suit, then exit the loop
+#                 trial_data = np.delete(trial_data, np.s_[trial:sequence_end], axis=1)
+#                 trial_labels = np.delete(trial_labels, np.s_[trial:sequence_end])
+#                 trial_number -= trials_per_sequence
+#                 rejected_trials += trials_per_sequence
+#                 break
+
+#         rejection_suggestions = 0
+#         trial += trials_per_sequence
+
+#     percent_rejected = (rejected_trials / num_trials ) * 100
+
+#     print('Number Rejected Sequence-based: ' + str(rejected_trials))
+
+#     if percent_rejected > rejection_threshold:
+
+#         raise Exception(f'Percentage of data removed too high [{percent_rejected}]')
+
+#     else:
+#         return trial_data, trial_labels, percent_rejected
+    
 if __name__ == "__main__":
     import argparse
 

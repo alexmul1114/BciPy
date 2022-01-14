@@ -1,4 +1,3 @@
-from bcipy.signal.evaluate.rules import HighVoltage, LowVoltage
 
 
 class Evaluator:
@@ -11,20 +10,11 @@ class Evaluator:
     Add rules given in parameters to evaluator's ruleset and set
     keys for broken_rules. One heading per rule.
 
-    parameters (dict): dictionary of parameters from json file, given by caller
     rules (list of rule objects, defined in rules.py)
     """
 
-    def __init__(self, parameters, high_voltage, low_voltage):
-        self.rules = []
-
-        # if high_voltage threshold is enabled, add to rules
-        if high_voltage:
-            self.rules.append(HighVoltage(parameters['high_voltage_value']))
-
-        # if low_voltage threshold is enabled, add to rules
-        if low_voltage:
-            self.rules.append(LowVoltage(parameters['low_voltage_value']))
+    def __init__(self, rules):
+        self.rules = rules
 
     def evaluate(self, data):
         """Evaluate.

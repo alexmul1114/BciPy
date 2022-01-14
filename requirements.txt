@@ -3,7 +3,7 @@ transformers==4.15.0
 torch==1.10.1
 docker==2.6.1
 construct==2.8.14
-mne==0.17.0
+mne==0.24.1
 PsychoPy==2020.2.10
 openpyxl==2.6.3
 pyglet==1.5.21

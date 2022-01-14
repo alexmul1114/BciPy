@@ -13,6 +13,13 @@ from bcipy.helpers.parameters import Parameters
 from bcipy.helpers.raw_data import sample_data, write
 from mne.io import read_raw_edf
 
+"""Note on reading edf with mne: Warning
+
+0.18 does not allow for stim channel synthesis from TAL channels called 
+‘EDF Annotations’ anymore. Instead, TAL channels are parsed and extracted 
+annotations are stored in raw.annotations. Use mne.events_from_annotations() 
+to obtain events from these annotations."""
+
 
 class TestConvert(unittest.TestCase):
     """Tests for data format conversions."""
