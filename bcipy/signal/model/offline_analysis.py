@@ -94,6 +94,8 @@ def offline_analysis(data_folder: str = None,
         offset=static_offset,
         trigger_path=f'{data_folder}/{triggers_file}.txt')
 
+    import pdb; pdb.set_trace()
+
     # Channel map can be checked from raw_data.csv file.
     # The timestamp column is already excluded.
     channel_map = analysis_channels(channels, type_amp)
@@ -130,11 +132,11 @@ def offline_analysis(data_folder: str = None,
         show_figure=False,
         figure_name='average_erp.pdf'
     )
-    if alert_finished:
-        offline_analysis_tone = parameters.get('offline_analysis_tone')
-        play_sound(offline_analysis_tone)
+    # if alert_finished:
+    #     offline_analysis_tone = parameters.get('offline_analysis_tone')
+    #     play_sound(offline_analysis_tone)
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     return
 
 

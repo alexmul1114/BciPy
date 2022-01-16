@@ -138,12 +138,14 @@ def mne_pipeline(data, channels, fs, trigger_labels, trigger_timing, trial_lengt
     nontarget_average = nontarget.average()
     target_average = target.average()
 
+    #### TODO: plot ERP that may replace old (joint, psd, etc), EOG results, ICA exploration
+
     # target_average.plot_joint(times=[-0.2, 0,  0.25, 0.5]) # uncomment to plot a joint topomap and eeg plot
 
     # Creating an evoked data structure which has more plotting tools https://mne.tools/stable/auto_tutorials/evoked/10_evoked_overview.html
     # https://mne.tools/stable/auto_tutorials/evoked/20_visualize_evoked.html
-    # evokeds = dict(auditory=list(epochs['auditory/left'].iter_evoked()),
-    #            visual=list(epochs['visual/left'].iter_evoked()))
+    # evokeds = dict(nontarget=list(epochs['1'].iter_evoked()),
+    #            target=list(epochs['2'].iter_evoked()))
     # mne.viz.plot_compare_evokeds(evokeds, combine='mean', picks=picks)
     import pdb; pdb.set_trace()
     
