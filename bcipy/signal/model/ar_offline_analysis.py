@@ -34,7 +34,7 @@ def ar_offline_analysis(data_folder: str = None,
     # extract relevant session information from parameters file
     trial_length = parameters.get('trial_length')
     trials_per_inquiry = parameters.get('stim_length')
-    triggers_file = parameters.get('trigger_file_name', 'triggers.txt')
+    triggers_file = parameters.get('trigger_file_name', 'triggers')
     raw_data_file = parameters.get('raw_data_name', 'raw_data.csv')
 
     # get signal filtering information
@@ -45,7 +45,7 @@ def ar_offline_analysis(data_folder: str = None,
     filter_order = parameters.get('filter_order', 2)
 
     # get offset and k folds
-    static_offset = 0
+    static_offset = 0.1
     k_folds = parameters.get('k_folds', 10)
 
     # Load raw data
@@ -77,8 +77,6 @@ def ar_offline_analysis(data_folder: str = None,
     channels_to_remove = [idx for idx, value in enumerate(channel_map) if value == 0]
     data = np.delete(data, channels_to_remove, axis=0)
     channels = np.delete(channels, channels_to_remove, axis=0).tolist()
-    import pdb; pdb.set_trace()
-
 
     mne_pipeline(data, channels, fs, trigger_values, trigger_timing, trial_length=trial_length)
 
@@ -122,7 +120,9 @@ def mne_pipeline(data, channels, fs, trigger_labels, trigger_timing, trial_lengt
     mne_data.set_montage(ten_twenty_montage)
     annotations = Annotations(trigger_timing, [trial_length] * len(trigger_timing), trigger_labels)
     mne_data.set_annotations(annotations)
-    # mne_data.plot()
+
+    import pdb; pdb.set_trace()
+    # mne_data.plot(scalings='auto', remove_dc=True)
 
     events_from_annot, event_dict = mne.events_from_annotations(mne_data)
     epochs = Epochs(mne_data, events_from_annot)
@@ -134,22 +134,27 @@ def mne_pipeline(data, channels, fs, trigger_labels, trigger_timing, trial_lengt
     # from here you can plot the epoched data in all or a subset of channels with plot
     # target.plot()
     # target.plot_psd()
-    # target.plot_image()
+    # target.plot_image() 
     nontarget_average = nontarget.average()
     target_average = target.average()
 
     #### TODO: plot ERP that may replace old (joint, psd, etc), EOG results, ICA exploration
 
     # target_average.plot_joint(times=[-0.2, 0,  0.25, 0.5]) # uncomment to plot a joint topomap and eeg plot
+    # nontarget_average.plot_joint(times=[-0.2, 0,  0.25, 0.5])
+
+    import pdb; pdb.set_trace()
 
     # Creating an evoked data structure which has more plotting tools https://mne.tools/stable/auto_tutorials/evoked/10_evoked_overview.html
     # https://mne.tools/stable/auto_tutorials/evoked/20_visualize_evoked.html
-    # evokeds = dict(nontarget=list(epochs['1'].iter_evoked()),
-    #            target=list(epochs['2'].iter_evoked()))
-    # mne.viz.plot_compare_evokeds(evokeds, combine='mean', picks=picks)
+    evokeds = dict(nontarget=list(epochs['1'].iter_evoked()),
+                   target=list(epochs['2'].iter_evoked()))
+    mne.viz.plot_compare_evokeds(evokeds, combine='mean')
+    import pdb; pdb.set_trace()
+
+    eye_artifacts(mne_data, annotations)
     import pdb; pdb.set_trace()
     
-
 
 def semi_automatic_artifact_rejection():
     """You can find events manually using plot, then using reject_by_annotation
@@ -159,22 +164,27 @@ def semi_automatic_artifact_rejection():
     # https://mne.tools/stable/auto_tutorials/preprocessing/20_rejecting_bad_data.html
     pass
 
-def eye_artifacts(mne_data):
+def eye_artifacts(mne_data, annotations):
     #  Use this to create Epochs out of the eog events found
-    # eog_epochs = mne.preprocessing.create_eog_epochs(mne_data, baseline=(-0.2, 0.0), picks=['Fp1', 'Fp2'])
-    # eog_epochs.plot_image(combine='mean')
-    # eog_epochs.average().plot_joint()
+    # eog_epochs = mne.preprocessing.create_eog_epochs(mne_data, baseline=(-0.2, 0.0), ch_name='Fp1')
+    # # eog_epochs.plot_image(combine='mean')
+    # # eog_epochs.average().plot_joint()
 
     # How to find blinks in the channel fp1 and set them to be filtered later with reject_by_annotation
     #  See https://mne.tools/stable/auto_tutorials/preprocessing/20_rejecting_bad_data.html
-    eog_events = mne.preprocessing.find_eog_events(mne_data, ch_name='Fp1')
+    # eog_events = mne.preprocessing.find_eog_events(mne_data, ch_name='Fp1')
+    data, _ = mne_data['Fp1']
+    threshold = (data.max() - data.min()) / 10  # the default is / 4, it catches less than half of my blinks
+    # threshold = 146.81479957002279 # use this is the min / max is bad for a recording... 
+    print(f'Using blink threshold of {threshold}')
+    eog_events = mne.preprocessing.find_eog_events(mne_data, ch_name=['Fp2', 'Fp1'], thresh=threshold)
 
     onsets = eog_events[:, 0] / mne_data.info['sfreq'] - 0.25
     durations = [0.5] * len(eog_events)
-    descriptions = ['bad blink'] * len(eog_events)
-    blink_annot = mne.Annotations(onsets, durations, descriptions,
-                                orig_time=mne_data.info['meas_date'])
-    mne_data.set_annotations(blink_annot)
+    descriptions = ['bad_blink'] * len(eog_events) # any annotation that may be removed needs the prefix bad_ or BAD_
+    annotations += mne.Annotations(onsets, durations, descriptions, orig_time=mne_data.info['meas_date'])
+    mne_data.set_annotations(annotations)
+    return mne_data
 
 
 if __name__ == "__main__":
