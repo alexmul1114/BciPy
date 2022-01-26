@@ -109,18 +109,19 @@
     "type": "float"
   },
   "filter_low": {
-    "value": "2",
+    "value": "0.1",
     "section": "signal_config",
     "readableName": "Low Frequency Filter Cutoff",
-    "helpTip": "Specifies the frequency bound (in Hz) of the high-pass filter (low cutoff). Default: 2",
+    "helpTip": "Specifies the frequency bound (in Hz) of the high-pass filter (low cutoff). Default: 0.1",
     "recommended_values": [
+      "0.1",
       "1",
       "2"
     ],
     "type": "float"
   },
   "filter_order": {
-    "value": "2",
+    "value": "5",
     "section": "signal_config",
     "readableName": "Filter Order",
     "helpTip": "Specifies the slope of the low-pass and high-pass filters. Default: 2",

@@ -66,6 +66,8 @@ def offline_analysis(data_folder: str = None,
     lp_filter = parameters.get('filter_low')
     filter_order = parameters.get('filter_order')
 
+    print(f'Using filter [range=[{lp_filter}-{hp_filter}]; order=[{filter_order}]; downsample=[{downsample_rate}]] with notch=[{notch_filter}]')
+
     # get offset and k folds
     static_offset = parameters.get('static_trigger_offset', 0.0)
     k_folds = parameters.get('k_folds')
@@ -94,7 +96,7 @@ def offline_analysis(data_folder: str = None,
         offset=static_offset,
         trigger_path=f'{data_folder}/{triggers_file}.txt')
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
     # Channel map can be checked from raw_data.csv file.
     # The timestamp column is already excluded.

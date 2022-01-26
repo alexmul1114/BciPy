@@ -41,7 +41,7 @@ def ar_offline_analysis(data_folder: str = None,
     downsample_rate = parameters.get('down_sampling_rate', 2)
     notch_filter = parameters.get('notch_filter_frequency', 60)
     hp_filter = parameters.get('filter_high', 45)
-    lp_filter = parameters.get('filter_low', 2)
+    lp_filter = parameters.get('filter_low', 0.1)
     filter_order = parameters.get('filter_order', 2)
 
     # get offset and k folds
