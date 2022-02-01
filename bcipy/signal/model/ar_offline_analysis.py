@@ -42,7 +42,7 @@ def ar_offline_analysis(data_folder: str = None,
     notch_filter = parameters.get('notch_filter_frequency', 60)
     hp_filter = parameters.get('filter_high', 45)
     lp_filter = parameters.get('filter_low', 0.1)
-    filter_order = parameters.get('filter_order', 2)
+    filter_order = parameters.get('filter_order', 5)
 
     # get offset and k folds
     static_offset = 0.1
@@ -140,8 +140,8 @@ def mne_pipeline(data, channels, fs, trigger_labels, trigger_timing, trial_lengt
 
     #### TODO: plot ERP that may replace old (joint, psd, etc), EOG results, ICA exploration
 
-    # target_average.plot_joint(times=[-0.2, 0,  0.25, 0.5]) # uncomment to plot a joint topomap and eeg plot
-    # nontarget_average.plot_joint(times=[-0.2, 0,  0.25, 0.5])
+    # target_average.plot_joint(times=[-0.2, 0, 0.3, 0.4, 0.5]) # uncomment to plot a joint topomap and eeg plot
+    # nontarget_average.plot_joint(times=[-0.2, 0, 0.3, 0.4, 0.5])
 
     import pdb; pdb.set_trace()
 
