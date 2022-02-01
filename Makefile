@@ -37,3 +37,6 @@ viewer:
 
 run-with-defaults:
 	bcipy
+
+train:
+	python bcipy/signal/model/offline_analysis.py -d "$(path)"
