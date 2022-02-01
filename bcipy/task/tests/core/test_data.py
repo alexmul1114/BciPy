@@ -22,6 +22,7 @@ def sample_stim_seq(include_evidence: bool = False):
         target_letter="H",
         current_text="",
         target_text="HELLO_WORLD",
+        selection="H",
         next_display_state="H")
 
     if include_evidence:
@@ -64,14 +65,6 @@ def sample_stim_seq(include_evidence: bool = False):
 class TestSessionData(unittest.TestCase):
     """Tests for session data."""
 
-    def setUp(self):
-        """Override; set up the needed path for load functions."""
-        pass
-
-    def tearDown(self):
-        """Override"""
-        pass
-
     def test_stim_sequence(self):
         """Test stim sequence can be created and serialized to dict."""
         stim_seq = sample_stim_seq()
@@ -83,7 +76,7 @@ class TestSessionData(unittest.TestCase):
 
         expected_keys = [
             'stimuli', 'timing', 'triggers', 'target_info', 'target_letter',
-            'current_text', 'target_text', 'next_display_state'
+            'current_text', 'target_text', 'selection', 'next_display_state'
         ]
 
         for key in expected_keys:
@@ -98,7 +91,8 @@ class TestSessionData(unittest.TestCase):
         stim_seq = sample_stim_seq(include_evidence=True)
         serialized = stim_seq.as_dict()
         self.assertTrue('lm_evidence' in serialized.keys())
-        self.assertEqual(serialized['lm_evidence'], stim_seq.evidences[EvidenceType.LM])
+        self.assertEqual(serialized['lm_evidence'],
+                         stim_seq.evidences[EvidenceType.LM])
 
         deserialized = Inquiry.from_dict(serialized)
 
@@ -111,7 +105,8 @@ class TestSessionData(unittest.TestCase):
         self.assertEqual(stim_seq.target_text, deserialized.target_text)
         self.assertEqual(stim_seq.next_display_state,
                          deserialized.next_display_state)
-        self.assertEqual(stim_seq.evidences[EvidenceType.LM], deserialized.evidences[EvidenceType.LM])
+        self.assertEqual(stim_seq.evidences[EvidenceType.LM],
+                         deserialized.evidences[EvidenceType.LM])
 
     def test_stim_sequence_evidence(self):
         """Test simplified evidence view"""
@@ -126,16 +121,50 @@ class TestSessionData(unittest.TestCase):
         self.assertEqual(len(evidence['most_likely']), 5)
         self.assertAlmostEqual(evidence['most_likely']['<'], 0.05, places=2)
 
+    def test_evidence_precision(self):
+        """Test that evidence can be serialized with a given precision."""
+
+        stim_seq = sample_stim_seq(include_evidence=True)
+        stim_seq.precision = 3
+        serialized = stim_seq.as_dict()
+        self.assertEqual(serialized['lm_evidence'][0], 0.035)
+        self.assertEqual(serialized['eeg_evidence'][0], 1.077)
+        self.assertEqual(serialized['likelihood'][0], 0.038)
+
+        stim_seq.precision = 4
+        serialized = stim_seq.as_dict()
+        self.assertEqual(serialized['lm_evidence'][0], 0.0352)
+        self.assertEqual(serialized['eeg_evidence'][0], 1.0772)
+        self.assertEqual(serialized['likelihood'][0], 0.0381)
+
+    def test_is_correct_decision(self):
+        """Test correct decision calculation"""
+        inq = sample_stim_seq(include_evidence=False)
+        inq.target_letter = "H"
+        inq.selection = "H"
+        self.assertTrue(inq.is_correct_decision)
+
+        inq.target_letter = "H"
+        inq.selection = "T"
+        self.assertFalse(inq.is_correct_decision)
+
+        inq.target_letter = ""
+        inq.selection = "H"
+        self.assertFalse(inq.is_correct_decision)
+
     def test_empty_session(self):
         """Test initial session creation"""
         session = Session(save_location=".")
         self.assertEqual(0, session.total_number_series)
+        self.assertEqual(0, session.total_inquiries)
         self.assertEqual(0, session.total_number_decisions)
+        self.assertIsNone(session.inquiries_per_selection)
         serialized = session.as_dict()
 
         self.assertEqual(0, serialized['total_time_spent'])
         self.assertEqual({}, serialized['series'])
         self.assertEqual(0, serialized['total_number_series'])
+        self.assertEqual(0, serialized['total_inquiries'])
 
     def test_session(self):
         """Test session functionality"""
@@ -156,6 +185,10 @@ class TestSessionData(unittest.TestCase):
 
         self.assertEqual(dict, type(serialized))
         self.assertEqual(2, serialized['total_number_series'])
+        self.assertEqual(3, serialized['total_inquiries'])
+        self.assertEqual(1, serialized['total_selections'])
+        self.assertEqual(3, serialized['inquiries_per_selection'])
+
         self.assertTrue('1' in serialized['series'].keys())
         self.assertTrue('2' in serialized['series'].keys())
 
@@ -171,10 +204,12 @@ class TestSessionData(unittest.TestCase):
 
         session.add_series()
         self.assertEqual(0, session.total_number_series)
+        self.assertEqual(0, session.total_inquiries)
         self.assertEqual(0, session.total_number_decisions)
 
         session.add_sequence(sample_stim_seq())
         self.assertEqual(1, session.total_number_series)
+        self.assertEqual(1, session.total_inquiries)
         self.assertEqual(0, session.total_number_decisions)
 
         session.add_series()
@@ -182,6 +217,7 @@ class TestSessionData(unittest.TestCase):
 
         session.add_sequence(sample_stim_seq())
         self.assertEqual(2, session.total_number_series)
+        self.assertEqual(2, session.total_inquiries)
         self.assertEqual(1, session.total_number_decisions)
 
     def test_session_deserialization(self):
@@ -212,6 +248,16 @@ class TestSessionData(unittest.TestCase):
         self.assertEqual(
             first_stim_seq.stimuli,
             ["+", "I", "D", "H", "G", "F", "<", "E", "B", "C", "A"])
+
+    def test_task_summary(self):
+        """Test that arbitrary data can be added."""
+        session = Session(save_location=".")
+        self.assertFalse('task_summary' in session.as_dict().keys())
+
+        session.task_summary = {"typing_accuracy": 22}
+        serialized = session.as_dict()
+        self.assertTrue('task_summary' in serialized.keys())
+        self.assertEqual(serialized['task_summary']['typing_accuracy'], 22)
 
 
 if __name__ == '__main__':

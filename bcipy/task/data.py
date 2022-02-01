@@ -6,6 +6,16 @@ from typing import Any, Dict, List, Optional
 EVIDENCE_SUFFIX = "_evidence"
 
 
+def rounded(values: List[float], precision: int) -> List[float]:
+    """Round the list of values to the given precision.
+
+    Parameters
+    ----------
+        values - values to round
+    """
+    return [round(value, precision) for value in values]
+
+
 class EvidenceType(Enum):
     """Enum of the supported evidence types used in the various spelling tasks."""
     LM = 'LM'  # Language Model
@@ -65,6 +75,7 @@ class Inquiry:
                  target_letter: str = None,
                  current_text: str = None,
                  target_text: str = None,
+                 selection: str = None,
                  next_display_state: str = None,
                  likelihood: List[float] = None):
         super().__init__()
@@ -75,10 +86,13 @@ class Inquiry:
         self.target_letter = target_letter
         self.current_text = current_text
         self.target_text = target_text
+        self.selection = selection
         self.next_display_state = next_display_state
 
         self.evidences: Dict[EvidenceType, List[float]] = {}
         self.likelihood = likelihood or []
+        # Precision used for serialization of evidence values.
+        self.precision = None
 
     @property
     def lm_evidence(self):
@@ -95,6 +109,11 @@ class Inquiry:
         """Returns true if the result of the inquiry was a decision."""
         return self.current_text != self.next_display_state
 
+    @property
+    def is_correct_decision(self) -> bool:
+        """Indicates whether the current selection was the target"""
+        return self.selection and (self.selection == self.target_letter)
+
     @classmethod
     def from_dict(cls, data: dict):
         """Deserializes from a dict
@@ -106,15 +125,15 @@ class Inquiry:
         """
         # partition into evidence data and other data.
 
-        suffix = EVIDENCE_SUFFIX
         evidences = {
             EvidenceType.deserialized(name): value
-            for name, value in data.items() if name.endswith(suffix)
+            for name, value in data.items() if name.endswith(EVIDENCE_SUFFIX)
         }
 
         non_evidence_data = {
             name: value
-            for name, value in data.items() if not name.endswith(suffix)
+            for name, value in data.items()
+            if not name.endswith(EVIDENCE_SUFFIX)
         }
         inquiry = cls(**non_evidence_data)
         if len(data['stimuli']) == 1 and isinstance(data['stimuli'][0], list):
@@ -133,14 +152,15 @@ class Inquiry:
             'target_letter': self.target_letter,
             'current_text': self.current_text,
             'target_text': self.target_text,
+            'selection': self.selection,
             'next_display_state': self.next_display_state
         }
 
         for evidence_type, evidence in self.evidences.items():
-            data[evidence_type.serialized] = evidence
+            data[evidence_type.serialized] = self.format(evidence)
 
         if self.likelihood:
-            data['likelihood'] = self.likelihood
+            data['likelihood'] = self.format(self.likelihood)
         return data
 
     def stim_evidence(self,
@@ -156,17 +176,28 @@ class Inquiry:
             alphabet - list of stim in the same order as the evidences.
             n_most_likely - number of most likely elements to include
         """
-        likelihood = dict(zip(alphabet, self.likelihood))
+        likelihood = dict(zip(alphabet, self.format(self.likelihood)))
         data: Dict[str, Any] = {
             'stimuli': self.stimuli,
         }
         for evidence_type, evidence in self.evidences.items():
-            data[evidence_type.serialized] = dict(zip(alphabet, evidence))
-
+            data[evidence_type.serialized] = dict(
+                zip(alphabet, self.format(evidence)))
         data['likelihood'] = likelihood
         data['most_likely'] = dict(
             Counter(likelihood).most_common(n_most_likely))
         return data
+
+    def format(self, evidence: List[float]) -> List[float]:
+        """Format the evidence for output.
+
+        Parameters
+        ----------
+            evidence - list of evidence values
+        """
+        if self.precision:
+            return rounded(evidence, self.precision)
+        return evidence
 
 
 class Session:
@@ -182,6 +213,8 @@ class Session:
         self.mode = mode
         self.series: List[List[Inquiry]] = [[]]
         self.total_time_spent = 0
+        self.time_spent_precision = 2
+        self.task_summary = {}
 
     @property
     def total_number_series(self) -> int:
@@ -194,6 +227,24 @@ class Session:
         # An alternate implementation would be to count the inquiries with
         # decision_made property of true.
         return len(self.series) - 1
+
+    @property
+    def total_inquiries(self) -> int:
+        """Total number of inquiries presented."""
+        return sum([len(lst) for lst in self.series])
+
+    @property
+    def inquiries_per_selection(self) -> Optional[float]:
+        """Inquiries per selection"""
+        selections = self.total_number_decisions
+        if selections == 0:
+            return None
+        return self.total_inquiries / selections
+
+    @property
+    def all_inquiries(self) -> List[Inquiry]:
+        """List of all Inquiries for the whole session"""
+        return [inq for inquiries in self.series for inq in inquiries if inquiries]
 
     def add_series(self):
         """Add another series unless the last one is empty"""
@@ -244,14 +295,23 @@ class Session:
                         stim_dict = stim.as_dict()
                     series_dict[series_counter][str(series_index)] = stim_dict
 
-        return {
+        info = {
             'session': self.save_location,
             'task': self.task,
             'mode': self.mode,
             'series': series_dict,
-            'total_time_spent': self.total_time_spent,
-            'total_number_series': self.total_number_series
+            'total_time_spent': round(self.total_time_spent,
+                                      self.time_spent_precision),
+            'total_minutes': round(self.total_time_spent / 60, self.time_spent_precision),
+            'total_number_series': self.total_number_series,
+            'total_inquiries': self.total_inquiries,
+            'total_selections': self.total_number_decisions,
+            'inquiries_per_selection': self.inquiries_per_selection
         }
+
+        if self.task_summary:
+            info['task_summary'] = self.task_summary
+        return info
 
     @classmethod
     def from_dict(cls, data: dict):
@@ -269,11 +329,12 @@ class Session:
 
         if data['series']:
             session.series.clear()
-            for series_counter in sorted(data['series'].keys()):
+
+            for series_key in sorted(data['series'].keys(), key=int):
                 session.series.append([])
-                for sequence_counter in sorted(data['series'][series_counter]):
-                    sequence_dict = data['series'][series_counter][
-                        sequence_counter]
-                    session.add_sequence(Inquiry.from_dict(sequence_dict))
+
+                for inquiry_key in sorted(data['series'][series_key], key=int):
+                    inquiry_dict = data['series'][series_key][inquiry_key]
+                    session.add_sequence(Inquiry.from_dict(inquiry_dict))
 
         return session

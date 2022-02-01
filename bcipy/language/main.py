@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Tuple, List
 from enum import Enum
 
@@ -13,13 +12,14 @@ class LanguageModel(ABC):
 
     response_type: ResponseType
     symbol_set: List[str]
+    normalized: bool = False  # normalized to probability domain
 
     @abstractmethod
-    def predict(self, evidence: List[Tuple]) -> List[tuple]:
+    def predict(self, evidence: List[str]) -> List[Tuple]:
         """
         Using the provided data, compute log likelihoods over the entire symbol set.
         Args:
-            evidence - [('A', .08), ('B', .1)]
+            evidence - ['A', 'B']
 
         Response:
             probability - dependant on response type, a list of words or symbols with probability
@@ -32,7 +32,7 @@ class LanguageModel(ABC):
         ...
 
     @abstractmethod
-    def load(self, path: Path) -> None:
+    def load(self) -> None:
         """Restore model state from the provided checkpoint"""
         ...
 
@@ -40,6 +40,6 @@ class LanguageModel(ABC):
         """Reset language model state"""
         ...
 
-    def state_update(self, evidence: List[Tuple]) -> None:
+    def state_update(self, evidence: List[str]) -> List[Tuple]:
         """Update state by predicting and updating"""
         ...

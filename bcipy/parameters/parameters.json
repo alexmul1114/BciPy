@@ -214,10 +214,10 @@
     "type": "str"
   },
   "trigger_file_name": {
-    "value": "triggers.txt",
+    "value": "triggers",
     "section": "bci_config",
     "readableName": "Triggers Filename",
-    "helpTip": "Specifies the filename for an output file with trigger timing information. Default: triggers.txt",
+    "helpTip": "Specifies the filename for an output file with trigger timing information. Default: triggers",
     "recommended_values": "",
     "type": "str"
   },
@@ -377,19 +377,19 @@
     "recommended_values": "",
     "type": "float"
   },
-  "time_target": {
+  "time_prompt": {
     "value": "1",
     "section": "bci_config",
-    "readableName": "Target Letter Presentation Length (sec)",
-    "helpTip": "Target Letter Presentation Length",
+    "readableName": "Time Prompt Stimuli (sec)",
+    "helpTip": "The amount of time in seconds to present the target stimuli prompt in an inquiry.",
     "recommended_values": "",
     "type": "float"
   },
-  "time_cross": {
+  "time_fixation": {
     "value": "0.5",
     "section": "bci_config",
-    "readableName": "Time Fixation Cross (sec)",
-    "helpTip": "Time Fixation Cross",
+    "readableName": "Time Fixation Stimuli (sec)",
+    "helpTip": "The amount of time in seconds to present the fixation stimuli in an inquiry.",
     "recommended_values": "",
     "type": "float"
   },
@@ -410,16 +410,14 @@
     "type": "float"
   },
   "stim_font": {
-    "value": "Arial",
+    "value": "Consolas",
     "section": "bci_config",
     "readableName": "Stimulus Font",
     "helpTip": "Specifies the font used for text stimuli. Default: Arial",
     "recommended_values": [
-      "Verdana",
-      "Arial",
       "Courier New",
-      "Georgia",
-      "Times"
+      "Lucida Sans",
+      "Consolas"
     ],
     "type": "str"
   },
@@ -479,7 +477,7 @@
     "recommended_values": "",
     "type": "str"
   },
-  "text_pos_x": {
+  "info_pos_x": {
     "value": "0",
     "section": "bci_config",
     "readableName": "Position Text (X)",
@@ -489,7 +487,7 @@
     ],
     "type": "float"
   },
-  "text_pos_y": {
+  "info_pos_y": {
     "value": "-0.75",
     "section": "bci_config",
     "readableName": "Position Text (Y)",
@@ -534,16 +532,14 @@
     "type": "str"
   },
   "info_font": {
-    "value": "Arial",
+    "value": "Consolas",
     "section": "bci_config",
     "readableName": "Font Text",
     "helpTip": "Font Text",
     "recommended_values": [
-      "Verdana",
-      "Arial",
       "Courier New",
-      "Georgia",
-      "Times"
+      "Lucida Sans",
+      "Consolas"
     ],
     "type": "str"
   },
@@ -564,24 +560,30 @@
     "type": "str"
   },
   "task_font": {
-    "value": "Arial",
+    "value": "Consolas",
     "section": "bci_config",
     "readableName": "Task Text Font",
     "helpTip": "Specifies the font used for task-specific text, e.g. #/100 in calibration and target phrase in copy/spelling. Default: Arial",
     "recommended_values": [
-      "Verdana",
-      "Arial",
       "Courier New",
-      "Georgia",
-      "Times"
+      "Lucida Sans",
+      "Consolas"
     ],
+    "type": "str"
+  },
+  "task_text": {
+    "value": "HELLO_WORLD",
+    "section": "bci_config",
+    "readableName": "Target Phrase",
+    "helpTip": "Specifies the target phrase displayed at the top of the screen during text-stimuli copy/spelling tasks.",
+    "recommended_values": "",
     "type": "str"
   },
   "task_height": {
     "value": "0.1",
     "section": "bci_config",
     "readableName": "Task Text Size",
-    "helpTip": "Specifies the height (in ???) of task-specific text, e.g. #/100 in calibration and target phrase in copy/spelling. Possible values range from X to X. Default: 0.1",
+    "helpTip": "Specifies the height (in ???) of task-specific text, e.g. #/100 in calibration and target phrase in copy/spelling. Possible values range from 0 to 1. Default: 0.1",
     "recommended_values": [
       "0.1"
     ],
@@ -725,14 +727,6 @@
     "recommended_values": "",
     "type": "bool"
   },
-  "task_text": {
-    "value": "HELLO_WORLD",
-    "section": "bci_config",
-    "readableName": "Target Phrase",
-    "helpTip": "Specifies the target phrase displayed at the top of the screen during text-stimuli copy/spelling tasks.",
-    "recommended_values": "",
-    "type": "str"
-  },
   "spelled_letters_count": {
     "value": "0",
     "section": "bci_config",
@@ -753,10 +747,10 @@
     "value": "PRELM",
     "section": "lang_model_config",
     "readableName": "Language Model Type",
-    "helpTip": "Specifies which language model to use (PRELM or OCLM). OCLM does not work in the current version of the system. Default: PRELM",
+    "helpTip": "Specifies which language model to use. Default: PRELM",
     "recommended_values": [
       "PRELM",
-      "OCLM"
+      "UNIFORM"
     ],
     "type": "str"
   },
@@ -804,11 +798,12 @@
     "type": "bool"
   },
   "preview_inquiry_progress_method": {
-    "value": "1",
+    "value": "0",
     "section": "bci_config",
     "readableName": "Preview Inquiry Progression Method",
-    "helpTip": "If show_preview_inquiry true, this will determine how to proceed after a key hit. 1 = press to confirm 2 = press to skip to another inquiry",
+    "helpTip": "If show_preview_inquiry true, this will determine how to proceed after a key hit. 0 = preview only; 1 = press to confirm; 2 = press to skip to another inquiry",
     "recommended_values": [
+      "0",
       "1",
       "2"
     ],
@@ -843,8 +838,8 @@
   "show_feedback": {
     "value": "true",
     "section": "feedback_config",
-    "readableName": "Calibration Feedback On/Off",
-    "helpTip": "If ‘true’, feedback will be displayed in the feedback calibration task.",
+    "readableName": "Task Feedback On/Off",
+    "helpTip": "If ‘true’, feedback in tasks that support it.",
     "recommended_values": "",
     "type": "bool"
   },
@@ -865,7 +860,7 @@
     "type": "float"
   },
   "feedback_pos_x": {
-    "value": "-0.72",
+    "value": "0",
     "section": "feedback_config",
     "readableName": "Feedback Position Horizontal",
     "helpTip": "Specifies the position of the left edge of the feedback display on the screen. Possible values range from -1 to 1, with 0 representing the center. Default: -0.72",
@@ -881,18 +876,38 @@
     "type": "float"
   },
   "feedback_stim_height": {
-    "value": "0.35",
+    "value": "0.2",
     "section": "feedback_config",
-    "readableName": "Feedback Box Height",
-    "helpTip": "Specifies the height of the feedback boxes (in ???). Default: 0.35",
+    "readableName": "Feedback Stimuli Height",
+    "helpTip": "Specifies the height of the feedback stimuli. Default: 0.2",
     "recommended_values": "",
     "type": "float"
+  },
+  "feedback_font": {
+    "value": "Consolas",
+    "section": "feedback_config",
+    "readableName": "feedback_font",
+    "helpTip": "feedback_font",
+    "recommended_values": [
+      "Courier New",
+      "Lucida Sans",
+      "Consolas"
+    ],
+    "type": "str"
+  },
+  "feedback_color": {
+    "value": "white",
+    "section": "feedback_config",
+    "readableName": "feedback_color",
+    "helpTip": "feedback_color",
+    "recommended_values": "",
+    "type": "str"
   },
   "feedback_stim_width": {
     "value": "0.35",
     "section": "feedback_config",
     "readableName": "Feedback Box Width",
-    "helpTip": "Specifies the width of the feedback boxes (in ???). Default: 0.35",
+    "helpTip": "Specifies the width of the LevelFeedback boxes in pixels. Default: 0.35",
     "recommended_values": "",
     "type": "float"
   },
@@ -900,31 +915,15 @@
     "value": "1",
     "section": "feedback_config",
     "readableName": "Feedback Box Outline Width",
-    "helpTip": "Specifies the stroke width of the feedback box outline. Default: 1",
+    "helpTip": "Specifies the stroke width of the LevelFeedback box outline. Default: 1",
     "recommended_values": "",
     "type": "float"
-  },
-  "feedback_font": {
-    "value": "Arial",
-    "section": "feedback_config",
-    "readableName": "feedback_font",
-    "helpTip": "feedback_font",
-    "recommended_values": "",
-    "type": "str"
-  },
-  "feedback_message_color": {
-    "value": "white",
-    "section": "feedback_config",
-    "readableName": "feedback_message_color",
-    "helpTip": "feedback_message_color",
-    "recommended_values": "",
-    "type": "str"
   },
   "feedback_line_color": {
     "value": "white",
     "section": "feedback_config",
     "readableName": "Feedback Box Outline Color",
-    "helpTip": " Specifies the color of the feedback box outline. Default: white",
+    "helpTip": " Specifies the color of the LevelFeedback box outline. Default: white",
     "recommended_values": "",
     "type": "str"
   },
@@ -932,7 +931,7 @@
     "value": "0.37",
     "section": "feedback_config",
     "readableName": "Feedback Box Spacing",
-    "helpTip": "Specifies the distance (in ???) between feedback boxes. Default: 0.37",
+    "helpTip": "Specifies the distance between LevelFeedback boxes. Default: 0.37",
     "recommended_values": "",
     "type": "float"
   },
@@ -940,7 +939,7 @@
     "value": "100",
     "section": "feedback_config",
     "readableName": "Feedback Target Outline Width",
-    "helpTip": "Specifies the stroke width of the target feedback box outline. Default: 100",
+    "helpTip": "Specifies the stroke width of the target feedback box outline using LevelFeedback. Default: 100",
     "recommended_values": "",
     "type": "int"
   },
@@ -954,61 +953,5 @@
       "MutliTaper"
     ],
     "type": "str"
-  },
-  "feedback_band_lower_limit": {
-    "value": "8",
-    "section": "feedback_config",
-    "readableName": "Feedback Band Lower Bound",
-    "helpTip": "Specifies the lower bound (in Hz) for the target power spectral density band used for generating feedback. Default: 8",
-    "recommended_values": "",
-    "type": "float"
-  },
-  "feedback_band_upper_limit": {
-    "value": "10",
-    "section": "feedback_config",
-    "readableName": "Feedback Band Upper Bound",
-    "helpTip": "Specifies the upper bound (in Hz) for the target power spectral density band used for generating feedback. Default: 10",
-    "recommended_values": "",
-    "type": "float"
-  },
-  "feedback_level_descending": {
-    "value": "false",
-    "section": "feedback_config",
-    "readableName": "Descending Feedback Level On/Off",
-    "helpTip": "Controls the directionality of the feedback band cutoffs specified above. If ‘true’, descending feedback level will be used, such that the system will assume that higher PSD values correspond with better feedback. If ‘false’, the system will assume that lower PSD values correspond with better feedback. Default: false",
-    "recommended_values": "",
-    "type": "bool"
-  },
-  "feedback_level_2_threshold": {
-    "value": "0.3780",
-    "section": "feedback_config",
-    "readableName": "Feedback Level 2 Threshold",
-    "helpTip": "Specifies the threshold (as a relative PSD value) between feedback level 1 (very bad/red) and level 2 (bad/orange). Default: 0.3780",
-    "recommended_values": "",
-    "type": "float"
-  },
-  "feedback_level_3_threshold": {
-    "value": "0.3147",
-    "section": "feedback_config",
-    "readableName": "Feedback Level 3 Threshold",
-    "helpTip": "Specifies the threshold (as a relative PSD value) between feedback level 2 (bad/orange) and level 3 (medium/yellow). Default: 0.3147",
-    "recommended_values": "",
-    "type": "float"
-  },
-  "feedback_level_4_threshold": {
-    "value": "0.2693",
-    "section": "feedback_config",
-    "readableName": "Feedback Level 4 Threshold",
-    "helpTip": "Specifies the threshold (as a relative PSD value) between feedback level 3 (medium/yellow) and level 4 (good/light green). Default: 0.2693",
-    "recommended_values": "",
-    "type": "float"
-  },
-  "feedback_level_5_threshold": {
-    "value": "0.2052",
-    "section": "feedback_config",
-    "readableName": "Feedback Level 5 Threshold",
-    "helpTip": "Specifies the threshold (as a relative PSD value) between feedback level 4 (good/light green) and level 5 (very good/green). Default: 0.2052",
-    "recommended_values": "",
-    "type": "float"
   }
 }

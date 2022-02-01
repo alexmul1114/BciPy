@@ -32,9 +32,8 @@ class TaskType(Enum):
 
     RSVP_CALIBRATION = 'RSVP Calibration'
     RSVP_COPY_PHRASE = 'RSVP Copy Phrase'
-    RSVP_ALERT_TONE_CALIBRATION = 'RSVP Alert Tone Calibration'
-    RSVP_INTER_INQUIRY_FEEDBACK_CALIBRATION = 'RSVP Inter-Inquiry Feedback Calibration'
     RSVP_TIMING_VERIFICATION_CALIBRATION = 'RSVP Time Test Calibration'
+    MATRIX_CALIBRATION = 'Matrix Calibration'
 
     def __new__(cls, *args, **kwds):
         """Autoincrements the value of each item added to the enum."""

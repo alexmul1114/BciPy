@@ -8,14 +8,15 @@ import numpy as np
 from mock import patch
 from mockito import any, mock, unstub, verify, when
 
-import bcipy.display.rsvp.mode.copy_phrase
-import bcipy.helpers.task
+import bcipy.display.paradigm.rsvp.mode.copy_phrase
+from bcipy.helpers.triggers import TriggerHandler
 from bcipy.acquisition.protocols.lsl.lsl_client import LslAcquisitionClient
 from bcipy.acquisition.device_info import DeviceInfo
 from bcipy.helpers.copy_phrase_wrapper import CopyPhraseWrapper
+from bcipy.helpers.parameters import Parameters
 from bcipy.task.paradigm.rsvp.copy_phrase import RSVPCopyPhraseTask
 from bcipy.task.data import Session, EvidenceType
-from bcipy.helpers.stimuli import InquirySchedule, StimuliOrder
+from bcipy.helpers.stimuli import InquirySchedule
 
 
 class TestCopyPhrase(unittest.TestCase):
@@ -23,7 +24,7 @@ class TestCopyPhrase(unittest.TestCase):
 
     def setUp(self):
         """Override; set up the needed path for load functions."""
-        self.parameters = {
+        parameters = {
             'backspace_always_shown': True,
             'decision_threshold': 0.8,
             'down_sampling_rate': 2,
@@ -31,7 +32,7 @@ class TestCopyPhrase(unittest.TestCase):
             'feedback_flash_time': 2.0,
             'feedback_font': 'Arial',
             'feedback_line_width': 1.0,
-            'feedback_message_color': 'white',
+            'feedback_color': 'white',
             'feedback_pos_x': -0.72,
             'feedback_pos_y': 0.0,
             'feedback_stim_height': 0.35,
@@ -66,7 +67,7 @@ class TestCopyPhrase(unittest.TestCase):
             'stim_height': 0.6,
             'stim_length': 10,
             'stim_number': 100,
-            'stim_order': StimuliOrder.RANDOM,
+            'stim_order': 'random',
             'stim_pos_x': 0.0,
             'stim_pos_y': 0.0,
             'stim_space_char': '–',
@@ -76,19 +77,20 @@ class TestCopyPhrase(unittest.TestCase):
             'task_font': 'Arial',
             'task_height': 0.1,
             'task_text': 'HELLO_WORLD',
-            'text_pos_x': 0.0,
-            'text_pos_y': -0.75,
-            'time_cross': 0.5,
+            'info_pos_x': 0.0,
+            'info_pos_y': -0.75,
+            'time_fixation': 0.5,
             'time_flash': 0.25,
-            'time_target': 1.0,
+            'time_prompt': 1.0,
             'trial_complete_message': 'Complete! Saving data...',
             'trial_complete_message_color': 'white',
             'trial_length': 0.5,
-            'trigger_file_name': 'triggers.txt',
+            'trigger_file_name': 'triggers',
             'trigger_type': 'image',
             'wait_screen_message': 'Press Space to start or Esc to exit',
             'wait_screen_message_color': 'white'
         }
+        self.parameters = Parameters.from_cast_values(**parameters)
 
         self.win = mock({'size': [500, 500], 'units': 'height'})
 
@@ -111,12 +113,19 @@ class TestCopyPhrase(unittest.TestCase):
                                         spec=CopyPhraseWrapper)
 
         self.display = mock()
+        self.display.first_stim_time = 0.0
         when(bcipy.task.paradigm.rsvp.copy_phrase)._init_copy_phrase_display(
-            self.parameters, self.win, self.daq, any,
-            any).thenReturn(self.display)
+            self.parameters, self.win, any(),
+            any(), any()).thenReturn(self.display)
 
         when(bcipy.task.paradigm.rsvp.copy_phrase)._init_copy_phrase_wrapper(
             ...).thenReturn(self.copy_phrase_wrapper)
+        # mock data for initial series
+        series_gen = mock_inquiry_data()
+        when(self.copy_phrase_wrapper).initialize_series().thenReturn(
+            next(series_gen))
+        when(TriggerHandler).write().thenReturn()
+        when(TriggerHandler).add_triggers(any()).thenReturn()
 
     def tearDown(self):
         """Override"""
@@ -125,22 +134,21 @@ class TestCopyPhrase(unittest.TestCase):
 
     def test_initialize(self):
         """Test initialization"""
-        task = RSVPCopyPhraseTask(win=self.win,
-                                  daq=self.daq,
-                                  parameters=self.parameters,
-                                  file_save=self.temp_dir,
-                                  signal_model=self.signal_model,
-                                  language_model=self.language_model,
-                                  fake=True)
+        RSVPCopyPhraseTask(
+            win=self.win,
+            daq=self.daq,
+            parameters=self.parameters,
+            file_save=self.temp_dir,
+            signal_model=self.signal_model,
+            language_model=self.language_model,
+            fake=True)
 
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_user_input')
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.trial_complete_message')
-    @patch(
-        'bcipy.task.paradigm.rsvp.copy_phrase._write_triggers_from_inquiry_copy_phrase'
-    )
-    def test_execute_without_inquiry(self, write_trg_mock, message_mock,
+    def test_execute_without_inquiry(self, message_mock,
                                      user_input_mock):
         """User should be able to exit the task without viewing any inquiries"""
+
         task = RSVPCopyPhraseTask(win=self.win,
                                   daq=self.daq,
                                   parameters=self.parameters,
@@ -150,10 +158,6 @@ class TestCopyPhrase(unittest.TestCase):
                                   fake=True)
 
         user_input_mock.return_value = False
-        # mock data for initial series
-        series_gen = mock_inquiry_data()
-        when(self.copy_phrase_wrapper).initialize_series().thenReturn(
-            next(series_gen))
 
         result = task.execute()
 
@@ -161,7 +165,6 @@ class TestCopyPhrase(unittest.TestCase):
         verify(self.copy_phrase_wrapper, times=1).initialize_series()
         verify(self.display, times=0).preview_inquiry()
         verify(self.display, times=0).do_inquiry()
-        self.assertTrue(write_trg_mock.called, 'Triggers should be written')
         self.assertEqual(self.temp_dir, result)
 
         self.assertTrue(
@@ -173,14 +176,11 @@ class TestCopyPhrase(unittest.TestCase):
 
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_user_input')
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.trial_complete_message')
-    @patch(
-        'bcipy.task.paradigm.rsvp.copy_phrase._write_triggers_from_inquiry_copy_phrase'
-    )
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_data_for_decision')
-    def test_execute_fake_data_single_inquiry(self, process_data_mock,
-                                              write_trg_mock, message_mock,
+    def test_execute_fake_data_single_inquiry(self, process_data_mock, message_mock,
                                               user_input_mock):
         """Test that fake data does not use the decision maker"""
+
         task = RSVPCopyPhraseTask(win=self.win,
                                   daq=self.daq,
                                   parameters=self.parameters,
@@ -191,12 +191,6 @@ class TestCopyPhrase(unittest.TestCase):
 
         # Execute a single inquiry then `escape` to stop
         user_input_mock.side_effect = [True, True, False]
-
-        # mock data for initial series
-        series_gen = mock_inquiry_data()
-
-        when(self.copy_phrase_wrapper).initialize_series().thenReturn(
-            next(series_gen))
 
         timings_gen = mock_inquiry_timings()
         when(self.display).do_inquiry().thenReturn(next(timings_gen))
@@ -210,7 +204,6 @@ class TestCopyPhrase(unittest.TestCase):
         verify(self.copy_phrase_wrapper, times=2).initialize_series()
         verify(self.display, times=0).preview_inquiry()
         verify(self.display, times=1).do_inquiry()
-        self.assertTrue(write_trg_mock.called, 'Triggers should be written')
         self.assertEqual(self.temp_dir, result)
 
         self.assertTrue(
@@ -222,11 +215,8 @@ class TestCopyPhrase(unittest.TestCase):
 
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_user_input')
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.trial_complete_message')
-    @patch(
-        'bcipy.task.paradigm.rsvp.copy_phrase._write_triggers_from_inquiry_copy_phrase'
-    )
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_data_for_decision')
-    def test_max_inq_len(self, process_data_mock, write_trg_mock, message_mock,
+    def test_max_inq_len(self, process_data_mock, message_mock,
                          user_input_mock):
         """Test stoppage criteria for the max inquiry length"""
         self.parameters['max_inq_len'] = 2
@@ -241,11 +231,6 @@ class TestCopyPhrase(unittest.TestCase):
         # Don't provide any `escape` input from the user
         user_input_mock.side_effect = [True, True, True, True, True, True]
 
-        # mock data for initial series
-        series_gen = mock_inquiry_data()
-        when(self.copy_phrase_wrapper).initialize_series().thenReturn(
-            next(series_gen))
-
         timings_gen = mock_inquiry_timings()
         when(self.display).do_inquiry().thenReturn(next(timings_gen))
 
@@ -256,7 +241,6 @@ class TestCopyPhrase(unittest.TestCase):
 
         # Assertions
         verify(self.display, times=2).do_inquiry()
-        self.assertTrue(write_trg_mock.called, 'Triggers should be written')
         self.assertEqual(self.temp_dir, result)
 
         self.assertTrue(
@@ -270,15 +254,13 @@ class TestCopyPhrase(unittest.TestCase):
 
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_user_input')
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.trial_complete_message')
-    @patch(
-        'bcipy.task.paradigm.rsvp.copy_phrase._write_triggers_from_inquiry_copy_phrase'
-    )
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_data_for_decision')
-    def test_spelling_complete(self, process_data_mock, write_trg_mock,
+    def test_spelling_complete(self, process_data_mock,
                                message_mock, user_input_mock):
         """Test that the task stops when the copy_phrase has been correctly spelled."""
         self.parameters['task_text'] = 'Hello'
         self.parameters['spelled_letters_count'] = 4
+
         task = RSVPCopyPhraseTask(win=self.win,
                                   daq=self.daq,
                                   parameters=self.parameters,
@@ -290,13 +272,6 @@ class TestCopyPhrase(unittest.TestCase):
         # Don't provide any `escape` input from the user
         user_input_mock.side_effect = [True, True, True, True, True, True]
 
-        # TODO: do another test with real data; mock the decision_maker.displayed_state is the copy_phrase
-
-        # mock data for initial series
-        series_gen = mock_inquiry_data()
-        when(self.copy_phrase_wrapper).initialize_series().thenReturn(
-            next(series_gen))
-
         timings_gen = mock_inquiry_timings()
         when(self.display).do_inquiry().thenReturn(next(timings_gen))
 
@@ -307,7 +282,6 @@ class TestCopyPhrase(unittest.TestCase):
 
         # Assertions
         verify(self.display, times=1).do_inquiry()
-        self.assertTrue(write_trg_mock.called, 'Triggers should be written')
         self.assertEqual(self.temp_dir, result)
 
         self.assertTrue(
@@ -381,11 +355,8 @@ class TestCopyPhrase(unittest.TestCase):
 
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_user_input')
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.trial_complete_message')
-    @patch(
-        'bcipy.task.paradigm.rsvp.copy_phrase._write_triggers_from_inquiry_copy_phrase'
-    )
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_data_for_decision')
-    def test_next_letter(self, process_data_mock, write_trg_mock, message_mock,
+    def test_next_letter(self, process_data_mock, message_mock,
                          user_input_mock):
         """Test that the task stops when the copy_phrase has been correctly spelled."""
         self.parameters['task_text'] = 'Hello'
@@ -413,12 +384,8 @@ class TestCopyPhrase(unittest.TestCase):
 
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_user_input')
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.trial_complete_message')
-    @patch(
-        'bcipy.task.paradigm.rsvp.copy_phrase._write_triggers_from_inquiry_copy_phrase'
-    )
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_data_for_decision')
-    def test_execute_fake_data_with_preview(self, process_data_mock,
-                                            write_trg_mock, message_mock,
+    def test_execute_fake_data_with_preview(self, process_data_mock, message_mock,
                                             user_input_mock):
         """Test that preview is displayed"""
         self.parameters['show_preview_inquiry'] = True
@@ -432,12 +399,6 @@ class TestCopyPhrase(unittest.TestCase):
 
         # Execute a single inquiry then `escape` to stop
         user_input_mock.side_effect = [True, True, False]
-
-        # mock data for initial series
-        series_gen = mock_inquiry_data()
-
-        when(self.copy_phrase_wrapper).initialize_series().thenReturn(
-            next(series_gen))
         when(self.copy_phrase_wrapper).add_evidence(any, any).thenReturn([])
 
         timings_gen = mock_inquiry_timings()
@@ -454,29 +415,14 @@ class TestCopyPhrase(unittest.TestCase):
         verify(self.display, times=1).preview_inquiry()
         verify(self.display, times=1).do_inquiry()
         verify(self.copy_phrase_wrapper, times=1).add_evidence(EvidenceType.BTN, ...)
-        self.assertTrue(write_trg_mock.called, 'Triggers should be written')
         self.assertEqual(self.temp_dir, result)
 
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_user_input')
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.trial_complete_message')
-    @patch(
-        'bcipy.task.paradigm.rsvp.copy_phrase._write_triggers_from_inquiry_copy_phrase'
-    )
     @patch('bcipy.task.paradigm.rsvp.copy_phrase.get_data_for_decision')
-    def test_execute_real_data_single_inquiry(self, process_data_mock,
-                                              write_trg_mock, message_mock,
+    def test_execute_real_data_single_inquiry(self, process_data_mock, message_mock,
                                               user_input_mock):
         """Test that fake data does not use the decision maker"""
-        task = RSVPCopyPhraseTask(win=self.win,
-                                  daq=self.daq,
-                                  parameters=self.parameters,
-                                  file_save=self.temp_dir,
-                                  signal_model=self.signal_model,
-                                  language_model=self.language_model,
-                                  fake=False)
-
-        # Execute a single inquiry then `escape` to stop
-        user_input_mock.side_effect = [True, True, False]
 
         conjugator_mock = mock({
             'latest_evidence': {
@@ -555,6 +501,17 @@ class TestCopyPhrase(unittest.TestCase):
              ['I', 6.258658453123644], ['B', 6.475744977127761],
              ['C', 6.692347120027989]])
 
+        task = RSVPCopyPhraseTask(win=self.win,
+                                  daq=self.daq,
+                                  parameters=self.parameters,
+                                  file_save=self.temp_dir,
+                                  signal_model=self.signal_model,
+                                  language_model=self.language_model,
+                                  fake=False)
+
+        # Execute a single inquiry then `escape` to stop
+        user_input_mock.side_effect = [True, True, False]
+
         # mock data for single inquiry
         process_data_mock.return_value = mock_process_data()
 
@@ -565,7 +522,6 @@ class TestCopyPhrase(unittest.TestCase):
         verify(copy_phrase_wrapper_mock, times=1).decide(...)
         verify(self.display, times=0).preview_inquiry()
         verify(self.display, times=1).do_inquiry()
-        self.assertTrue(write_trg_mock.called, 'Triggers should be written')
         self.assertEqual(self.temp_dir, result)
 
         self.assertTrue(
@@ -601,31 +557,31 @@ def mock_inquiry_data():
 def mock_inquiry_timings():
     """Generator that yields data mocking the rsvp display do_inquiry() method, in response
     to stimuli that matches mock_inquiry_data."""
-    timings = [[['calibration_trigger', 2.753726002993062],
-                ['+', 4.444104908034205], ['H', 4.912202936131507],
-                ['C', 5.12930660112761], ['D', 5.34570693410933],
-                ['<', 5.562510692048818], ['I', 5.7791651100851595],
-                ['E', 5.9961639060638845], ['B', 6.212680589174852],
-                ['F', 6.429482511011884], ['A', 6.646376829128712],
-                ['G', 6.863032861147076]],
-               [['+', 8.669420078163967], ['H', 9.13769360119477],
-                ['C', 9.35457488708198], ['D', 9.571229799184948],
-                ['<', 9.788011310156435], ['I', 10.00473167304881],
-                ['E', 10.221595474053174], ['B', 10.43832335807383],
-                ['F', 10.655463190982118], ['A', 10.87200471619144],
-                ['G', 11.088761936174706]],
-               [['+', 12.864253633189946], ['H', 13.33253051317297],
-                ['C', 13.549160052090883], ['D', 13.765938241034746],
-                ['<', 13.98268389608711], ['I', 14.199565244140103],
-                ['E', 14.416235156124458], ['B', 14.633067002054304],
-                ['F', 14.850578824989498], ['A', 15.066696983063594],
-                ['G', 15.284231177065521]],
-               [['+', 17.058103224029765], ['H', 17.526671562111005],
-                ['C', 17.743475361028686], ['D', 17.960292851086706],
-                ['<', 18.176947175059468], ['I', 18.393698902102187],
-                ['E', 18.610405513085425], ['B', 18.827197188977152],
-                ['F', 19.04395405598916], ['A', 19.26077937404625],
-                ['G', 19.477498335996643]]]
+    timings = [[
+        ['+', 4.444104908034205], ['H', 4.912202936131507],
+        ['C', 5.12930660112761], ['D', 5.34570693410933],
+        ['<', 5.562510692048818], ['I', 5.7791651100851595],
+        ['E', 5.9961639060638845], ['B', 6.212680589174852],
+        ['F', 6.429482511011884], ['A', 6.646376829128712],
+        ['G', 6.863032861147076]],
+        [['+', 8.669420078163967], ['H', 9.13769360119477],
+         ['C', 9.35457488708198], ['D', 9.571229799184948],
+         ['<', 9.788011310156435], ['I', 10.00473167304881],
+         ['E', 10.221595474053174], ['B', 10.43832335807383],
+         ['F', 10.655463190982118], ['A', 10.87200471619144],
+         ['G', 11.088761936174706]],
+        [['+', 12.864253633189946], ['H', 13.33253051317297],
+         ['C', 13.549160052090883], ['D', 13.765938241034746],
+         ['<', 13.98268389608711], ['I', 14.199565244140103],
+         ['E', 14.416235156124458], ['B', 14.633067002054304],
+         ['F', 14.850578824989498], ['A', 15.066696983063594],
+         ['G', 15.284231177065521]],
+        [['+', 17.058103224029765], ['H', 17.526671562111005],
+         ['C', 17.743475361028686], ['D', 17.960292851086706],
+         ['<', 18.176947175059468], ['I', 18.393698902102187],
+         ['E', 18.610405513085425], ['B', 18.827197188977152],
+         ['F', 19.04395405598916], ['A', 19.26077937404625],
+         ['G', 19.477498335996643]]]
     for timing in timings:
         yield timing
 

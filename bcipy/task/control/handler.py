@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from bcipy.helpers.stimuli import InquirySchedule, rsvp_inq_generator, StimuliOrder
+from bcipy.helpers.stimuli import InquirySchedule, inq_generator, StimuliOrder
 from bcipy.helpers.task import SPACE_CHAR, BACKSPACE_CHAR
 from bcipy.task.control.query import RandomStimuliAgent
 from bcipy.task.control.criteria import CriteriaEvaluator
@@ -165,7 +165,7 @@ class DecisionMaker:
 
         self.last_selection = ''
 
-        # Items shown in every inquiry TODO this is unused
+        # Items shown in every inquiry
         self.inq_constants = inq_constants
 
     def reset(self, state=''):
@@ -278,11 +278,12 @@ class DecisionMaker:
 
         # querying agent decides on possible letters to be shown on the screen
         query_els = self.stimuli_agent.return_stimuli(
-            self.list_series[-1]['list_distribution'])
+            self.list_series[-1]['list_distribution'],
+            constants=self.inq_constants)
         # once querying is determined, append with timing and color info.
-        stimuli = rsvp_inq_generator(query=query_els,
-                                     stim_number=1,
-                                     is_txt=self.is_txt_stim,
-                                     timing=self.stimuli_timing,
-                                     stim_order=self.stimuli_order)
+        stimuli = inq_generator(query=query_els,
+                                inquiry_count=1,
+                                is_txt=self.is_txt_stim,
+                                timing=self.stimuli_timing,
+                                stim_order=self.stimuli_order)
         return stimuli

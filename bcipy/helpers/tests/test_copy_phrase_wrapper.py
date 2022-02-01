@@ -123,7 +123,6 @@ class TestCopyPhraseWrapper(unittest.TestCase):
         self.assertEqual(len(letters), len(labels))
 
         triggers = [
-            ("calibration_trigger", 0.0),
             ("+", 0.1),
             ("H", 0.5670222830376588),
             ("D", 0.8171830819919705),
@@ -137,7 +136,6 @@ class TestCopyPhraseWrapper(unittest.TestCase):
             ("E", 2.833274284028448),
         ]
         target_info = [
-            "calib",
             "fixation",
             "nontarget",
             "nontarget",
@@ -189,14 +187,6 @@ class TestCopyPhraseWrapper(unittest.TestCase):
 
         is_accepted, sti = copy_phrase_task.initialize_series()
         self.assertFalse(is_accepted)
-        self.assertEqual(
-            sti,
-            (
-                [["+", "U", "T", "_", "W", "Y", "X", "Z", "<", "S", "V"]],
-                [[self.params["time_cross"]] + [self.params["time_flash"]] * self.params["stim_length"]],
-                [[self.params["fixation_color"]] + [self.params["stim_color"]] * self.params["stim_length"]],
-            ),
-        )
 
         triggers = [
             ("+", 0.0),
@@ -233,7 +223,7 @@ class TestCopyPhraseWrapper(unittest.TestCase):
             sti,
             (
                 [["+", "I", "F", "B", "G", "C", "D", "J", "A", "E", "H"]],
-                [[self.params["time_cross"]] + [self.params["time_flash"]] * self.params["stim_length"]],
+                [[self.params["time_fixation"]] + [self.params["time_flash"]] * self.params["stim_length"]],
                 [[self.params["fixation_color"]] + [self.params["stim_color"]] * self.params["stim_length"]],
             ),
         )

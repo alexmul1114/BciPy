@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+
 from abc import ABC, abstractmethod
 from itertools import zip_longest
 from string import ascii_uppercase
@@ -68,7 +69,7 @@ def calculate_stimulation_freq(flash_time: float) -> float:
 
     In an RSVP paradigm, the inquiry itself will produce an
         SSVEP response to the stimulation. Here we calculate
-        what that frequency should be based in the presentation
+        what that frequency should be based on the presentation
         time.
 
     PARAMETERS
@@ -90,21 +91,20 @@ def alphabet(parameters=None, include_path=True):
     -------
         array of letters.
     """
-    if parameters:
-        if not parameters['is_txt_stim']:
-            # construct an array of paths to images
-            path = parameters['path_to_presentation_images']
-            stimulus_array = []
-            for stimulus_filename in sorted(os.listdir(path)):
-                # PLUS.png is reserved for the fixation symbol
-                if stimulus_filename.endswith(
-                        '.png') and not stimulus_filename.endswith('PLUS.png'):
-                    if include_path:
-                        img = os.path.join(path, stimulus_filename)
-                    else:
-                        img = os.path.splitext(stimulus_filename)[0]
-                    stimulus_array.append(img)
-            return stimulus_array
+    if parameters and not parameters['is_txt_stim']:
+        # construct an array of paths to images
+        path = parameters['path_to_presentation_images']
+        stimulus_array = []
+        for stimulus_filename in sorted(os.listdir(path)):
+            # PLUS.png is reserved for the fixation symbol
+            if stimulus_filename.endswith(
+                    '.png') and not stimulus_filename.endswith('PLUS.png'):
+                if include_path:
+                    img = os.path.join(path, stimulus_filename)
+                else:
+                    img = os.path.splitext(stimulus_filename)[0]
+                stimulus_array.append(img)
+        return stimulus_array
 
     return list(ascii_uppercase) + [BACKSPACE_CHAR, SPACE_CHAR]
 
@@ -215,7 +215,7 @@ def _float_val(col: Any) -> float:
     return float(col)
 
 
-def trial_complete_message(win, parameters):
+def trial_complete_message(win, parameters) -> List[visual.TextStim]:
     """Trial Complete Message.
 
     Function return a TextStim Object (see Psychopy) to complete the trial.
@@ -233,11 +233,11 @@ def trial_complete_message(win, parameters):
     """
     message_stim = visual.TextStim(
         win=win,
-        height=parameters['task_height'],
+        height=parameters['info_height'],
         text=parameters['trial_complete_message'],
-        font=parameters['task_font'],
-        pos=(float(parameters['text_pos_x']),
-             float(parameters['text_pos_y'])),
+        font=parameters['info_font'],
+        pos=(parameters['info_pos_x'],
+             parameters['info_pos_y']),
         wrapWidth=None,
         color=parameters['trial_complete_message_color'],
         colorSpace='rgb',
