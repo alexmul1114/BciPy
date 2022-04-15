@@ -119,7 +119,7 @@ def get_system_info() -> dict:
         'processor': platform.processor(),
         'cpu_count': os.cpu_count(),
         'cpu_brand': info['brand_raw'],
-        'hz': info['hz_actual_friendly'],
+        'hz': info.get('hz_actual_friendly', 'unknown'),
         'ram': str(round(psutil.virtual_memory().total / (1024.0**3))) + " GB"
     }
 

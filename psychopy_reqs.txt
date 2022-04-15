@@ -1,0 +1,8 @@
+pyyaml
+wxPython
+scipy
+pyglet
+python-bidi
+json_tricks
+arabic_reshaper
+freetype-py

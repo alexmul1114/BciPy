@@ -1,0 +1,11 @@
+brew installed python3.9 libsndfile
+
+adjust versions in requirements.txt
+install psychopy using --no-deps (keep separate from requirements)
+install psychopy's minimal requirements directly
+
+before installing wxPython:
+export CFLAGS=-I/$(brew --prefix)/include
+export CXXFLAGS=-I/$(brew --prefix)/include
+
+pip install -e .

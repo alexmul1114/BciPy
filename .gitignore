@@ -9,6 +9,7 @@ data/
 # Virtualenv
 venv/
 venv*/
+*venv/
 __pycache__/
 .cache/
 
