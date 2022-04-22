@@ -1,5 +1,7 @@
+import imp
 import click
 from bcipy.helpers.load import fast_scandir
+from bcipy.helpers.convert import convert_to_edf
 
 
 @click.command()
@@ -18,6 +20,12 @@ def update_triggers(directory):
                 triggers = load_triggers(trigger_file)
                 test = correct_triggers(triggers)
                 write_triggers(test, path=trigger_file)
+                edf_path = convert_to_edf(
+                    session,
+                    use_event_durations=False,
+                    write_targetness=True,
+                    overwrite=True,
+                    annotation_channels=4)
 
 def load_triggers(trigger_path):
     # Get every line of triggers.txt

@@ -25,13 +25,12 @@ def convert_to_edf(data_dir: str,
                    overwrite=False,
                    write_targetness=False,
                    use_event_durations=False,
-                   mode=False,
                    annotation_channels=None) -> Path:
     """ Converts BciPy raw_data to the EDF+ filetype using pyEDFlib.
 
     See https://www.edfplus.info/ for the official EDF+ spec for more detailed
         information.
-    See https://www.teuniz.net/edflib_python/index.html for a free EDF viewer.
+    See https://www.teuniz.net/edfbrowser/index.html for a free EDF viewer.
 
     Parameters
     ----------
@@ -43,8 +42,6 @@ def convert_to_edf(data_dir: str,
         If False (default), an error will be raised if the file exists.
     write_targetness - If True, and targetness information is available, write
         that instead of the stimuli markers. False by default.
-    mode - optional; for a given task, define the task mode. Ex. 'calibration', 'copy_phrase'.
-        If not provided, it will be extracted from the data_dir.
     use_event_durations - optional; if True assigns a duration to each event.
     annotation_channels - optional; integer between 2-64 that will extend the number of
         annotations available to export. Use in cases where annotations are
