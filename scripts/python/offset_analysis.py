@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from bcipy.acquisition.device_info import DeviceInfo
 
+ALLOWABLE_TOLLERANCE = .02
+
 
 def channel_data(raw_data, device_info, channel_name, n_records=None):
     """Get data for a single channel.
@@ -55,47 +57,56 @@ def plot_triggers(raw_data, device_info, triggers, title=""):
     if title:
         plt.title(title)
 
-    trg_ymax = 1.5
 
-    # Plot TRG_device_stream column; this is a continuous line.
+    # Plot TRG column; this is a continuous line with >0 indicating light.
     trg_box_channel = channel_data(raw_data, device_info, 'TRG')
-    first_trg_box_time = None
     trg_box_y = []
+    trg_ymax = 1.5
     trg_box_x = []
+
+    # setup some analysis variable
+    diode_enc = False
+    starts = []
+    lengths = []
+    length = 0
+
     for i, val in enumerate(trg_box_channel):
         timestamp = clock_seconds(device_info, i + 1)
         value = int(float(val))
         trg_box_x.append(timestamp)
         trg_box_y.append(value)
-        if not first_trg_box_time and value == 1:
-            first_trg_box_time = timestamp
+
+        if value > 0 and not diode_enc:
+            diode_enc = True
+            starts.append(timestamp)
+
+        if value > 0 and diode_enc:
+            length += 0
+
+        if value < 1 and diode_enc:
+            diode_enc = False
+            lengths.append(length)
+            length = 0
+        # else:
+        #     print('Fail')
 
     ax.plot(trg_box_x, trg_box_y, label='TRG (trigger box)')
-    if first_trg_box_time:
-        ax.annotate(s=f"{round(first_trg_box_time, 2)}s", xy=(first_trg_box_time, 1.25),
-                    fontsize='small', color='#1f77b4', horizontalalignment='right',
-                    rotation=270)
 
     # Plot triggers.txt data if present; vertical line for each value.
     if triggers:
-        plt.vlines([stamp for (_name, _trgtype, stamp) in triggers],
+        trigger_diodes_timestamps = [stamp for (_name, _trgtype, stamp) in triggers if _name == '\u25A0']
+        plt.vlines(trigger_diodes_timestamps,
                    ymin=-1.0, ymax=trg_ymax, label='triggers.txt (adjusted)',
                    linewidth=0.5, color='cyan')
 
-    # Plot TRG column, vertical line for each one.
-    trg_channel = channel_data(raw_data, device_info, 'TRG')
-    # trg_stamps = [clock_seconds(device_info, i + 1)
-    #               for i, trg in enumerate(trg_channel) if trg != '0' and trg != '0.0']
-    # plt.vlines(trg_stamps, ymin=-1.0, ymax=trg_ymax, label='TRG (LSL)',
-    #            linewidth=0.5, color='red')
+    for trigger_stamp, diode_stamp in zip(trigger_diodes_timestamps, starts):
+        diff = trigger_stamp - diode_stamp
+        if abs(diff) > ALLOWABLE_TOLLERANCE:
+            print(f'AHHHHHHHH diff={diff}')
+
 
     # Add labels for TRGs
-    first_trg = None
-    for i, trg in enumerate(trg_channel):
-        if trg != '0' and trg != '0.0':
-            secs = clock_seconds(device_info, i + 1)
-            if not first_trg:
-                first_trg = secs
+    first_trg = trigger_diodes_timestamps[0]
 
     # Set initial zoom to +-5 seconds around the calibration_trigger
     if first_trg:
@@ -148,7 +159,6 @@ def read_triggers(triggers_file):
                 # omit offset record for plotting
                 corrected.append((name, trg_type, float(stamp) + offset))
         return corrected
-
 
 def main(path: str):
     """Run the viewer gui
