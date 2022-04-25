@@ -4,9 +4,10 @@ import os
 import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
+from textwrap import wrap
 from bcipy.acquisition.device_info import DeviceInfo
 
-ALLOWABLE_TOLLERANCE = .02
+ALLOWABLE_TOLERANCE = .02
 
 
 def channel_data(raw_data, device_info, channel_name, n_records=None):
@@ -55,7 +56,7 @@ def plot_triggers(raw_data, device_info, triggers, title=""):
     plt.xlabel('acquisition clock (secs)')
     plt.ylabel('TRG value')
     if title:
-        plt.title(title)
+        plt.title("\n".join(wrap(title, 50)))
 
 
     # Plot TRG column; this is a continuous line with >0 indicating light.
@@ -99,10 +100,16 @@ def plot_triggers(raw_data, device_info, triggers, title=""):
                    ymin=-1.0, ymax=trg_ymax, label='triggers.txt (adjusted)',
                    linewidth=0.5, color='cyan')
 
+    errors = []
     for trigger_stamp, diode_stamp in zip(trigger_diodes_timestamps, starts):
         diff = trigger_stamp - diode_stamp
-        if abs(diff) > ALLOWABLE_TOLLERANCE:
-            print(f'AHHHHHHHH diff={diff}')
+        if abs(diff) > ALLOWABLE_TOLERANCE:
+            errors.append(f'trigger={trigger_stamp} diode={diode_stamp} diff={diff}')
+    
+    if errors:
+        print(f'RESULTS: Allowable tolerance between triggers and photodiode exceeded. {errors}')
+    else:
+        print(f'RESULTS: Triggers and photodiode timestamps within limit of [{ALLOWABLE_TOLERANCE}s]!')
 
 
     # Add labels for TRGs
