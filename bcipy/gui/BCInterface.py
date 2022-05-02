@@ -50,7 +50,7 @@ class BCInterface(BCIGui):
         self.experiment = None
         self.task = None
 
-        self.autoclose = True
+        self.autoclose = False
 
         self.user_id_validations = [
             (invalid_length(min=self.min_length, max=self.max_length),
